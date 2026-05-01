@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,6 +99,78 @@ func sanitizeBody(b []byte) string {
 		s = s[:500] + "...[truncated]"
 	}
 	return s
+}
+
+// NextInvoiceNumber queries the 100 most recent invoices, finds the numerically
+// largest DocNumber, and returns an incremented version preserving any prefix and zero-padding.
+func (c *Client) NextInvoiceNumber(ctx context.Context) (string, error) {
+	q := "SELECT * FROM Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 100"
+	body, err := c.query(ctx, q)
+	if err != nil {
+		return "", err
+	}
+
+	var result struct {
+		QueryResponse struct {
+			Invoice []map[string]interface{} `json:"Invoice"`
+		} `json:"QueryResponse"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	var maxNum int
+	var bestDoc string
+	for _, raw := range result.QueryResponse.Invoice {
+		doc := stringVal(raw, "DocNumber")
+		if n := trailingInt(doc); n > maxNum {
+			maxNum = n
+			bestDoc = doc
+		}
+	}
+
+	return incrementDocNumber(bestDoc, maxNum), nil
+}
+
+// trailingInt extracts the trailing numeric portion of a string as an int.
+func trailingInt(s string) int {
+	i := len(s)
+	for i > 0 && s[i-1] >= '0' && s[i-1] <= '9' {
+		i--
+	}
+	if i == len(s) {
+		return 0
+	}
+	n, _ := strconv.Atoi(s[i:])
+	return n
+}
+
+// IncrementDocNumber increments the trailing numeric portion of a DocNumber,
+// preserving any prefix and zero-padding.
+func IncrementDocNumber(last string) string {
+	return incrementDocNumber(last, trailingInt(last))
+}
+
+func incrementDocNumber(last string, lastNum int) string {
+	if last == "" {
+		return "1"
+	}
+	i := len(last)
+	for i > 0 && last[i-1] >= '0' && last[i-1] <= '9' {
+		i--
+	}
+	prefix := last[:i]
+	numStr := last[i:]
+	if numStr == "" {
+		return last + "1"
+	}
+	next := strconv.Itoa(lastNum + 1)
+	if len(numStr) > 1 && numStr[0] == '0' {
+		for len(next) < len(numStr) {
+			next = "0" + next
+		}
+	}
+	return prefix + next
 }
 
 // ListItems returns all active QBO items (products and services).
@@ -361,6 +434,9 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 		"DueDate":     req.DueDate,
 		"PrivateNote": req.PrivateNote,
 		"Line":        lines,
+	}
+	if req.DocNumber != "" {
+		payload["DocNumber"] = req.DocNumber
 	}
 	if req.CustomerMemo != "" {
 		payload["CustomerMemo"] = map[string]interface{}{"value": req.CustomerMemo}

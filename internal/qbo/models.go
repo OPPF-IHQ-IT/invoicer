@@ -59,6 +59,7 @@ type ItemRef struct {
 
 type InvoiceCreateRequest struct {
 	CustomerRef  CustomerRef
+	DocNumber    string
 	TxnDate      string
 	DueDate      string
 	PrivateNote  string

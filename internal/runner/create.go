@@ -27,6 +27,11 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 
 	runID := time.Now().UTC().Format("2006-01-02T150405Z")
 
+	nextDocNumber, err := qboClient.NextInvoiceNumber(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetching next invoice number: %w", err)
+	}
+
 	for i := range plan.MemberPlans {
 		mp := &plan.MemberPlans[i]
 		if mp.Action != planner.ActionCreate {
@@ -37,6 +42,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 
 		inv, err := qboClient.CreateInvoice(ctx, qbo.InvoiceCreateRequest{
 			CustomerRef:  qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
+			DocNumber:    nextDocNumber,
 			TxnDate:      mp.InvoiceDate,
 			DueDate:      mp.DueDate,
 			PrivateNote:  privateNote,
@@ -50,6 +56,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 		}
 
 		mp.ExistingInvoice = inv
+		nextDocNumber = qbo.IncrementDocNumber(nextDocNumber)
 
 		// Update Airtable member status.
 		newStatus := cfg.Airtable.StatusValues.Invoiced
