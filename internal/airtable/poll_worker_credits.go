@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"sort"
 
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 // ListPollWorkerCredits returns all poll worker credit rows for the given member record IDs.

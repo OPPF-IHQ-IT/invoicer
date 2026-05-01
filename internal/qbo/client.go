@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/storage"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/storage"
 )
 
 type Client struct {

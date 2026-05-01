@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 // ListDuesSchedule returns all dues schedule rows for the given fiscal year label

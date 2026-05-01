@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 // ListInvoiceableMembers returns members whose Status is in the configured invoiceable list.

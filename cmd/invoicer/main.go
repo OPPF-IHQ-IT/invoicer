@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
-	"github.com/willmadison/invoicer/internal/cli"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/cli"
 )
 
 func main() {

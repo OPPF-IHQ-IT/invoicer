@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/airtable"
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/planner"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/planner"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // Result wraps the mutated plan and a run ID after execution.

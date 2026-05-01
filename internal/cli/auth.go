@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 type AuthCmd struct {

@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 type ConfigCmd struct {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/airtable"
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/fiscal"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/fiscal"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // SkipReason describes why a member's invoice was not calculated.

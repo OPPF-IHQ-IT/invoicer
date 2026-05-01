@@ -1,6 +1,6 @@
 package cli
 
-import "github.com/willmadison/invoicer/internal/config"
+import "github.com/OPPF-IHQ-IT/invoicer/internal/config"
 
 var Root struct {
 	ConfigFile string `short:"c" help:"Path to config file." default:"~/.config/invoicer/config.yaml" type:"path"`

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/airtable"
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/fiscal"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/fiscal"
 )
 
 var testFY, _ = fiscal.Parse("FY2026")

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/airtable"
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/fiscal"
-	"github.com/willmadison/invoicer/internal/invoicecalc"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/fiscal"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/invoicecalc"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // Action describes what invoicer would do for a member.

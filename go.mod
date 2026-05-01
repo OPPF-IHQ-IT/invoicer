@@ -1,4 +1,4 @@
-module github.com/willmadison/invoicer
+module github.com/OPPF-IHQ-IT/invoicer
 
 go 1.25.0
 

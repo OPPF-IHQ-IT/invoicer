@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 // Token holds persisted QBO OAuth credentials.

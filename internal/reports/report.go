@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/planner"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/planner"
 )
 
 type Mode string

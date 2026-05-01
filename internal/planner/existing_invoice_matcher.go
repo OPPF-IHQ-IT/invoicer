@@ -3,8 +3,8 @@ package planner
 import (
 	"strings"
 
-	"github.com/willmadison/invoicer/internal/fiscal"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/fiscal"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 const invoicerMarkerPrefix = "invoicer "

@@ -10,19 +10,19 @@ Built for KRS (Keeper of Records and Seal) officers, but designed to be chapter-
 
 ### Download a release binary (recommended)
 
-Download the latest binary for your platform from the [Releases](https://github.com/willmadison/invoicer/releases) page and place it on your `PATH`.
+Download the latest binary for your platform from the [Releases](https://github.com/OPPF-IHQ-IT/invoicer/releases) page and place it on your `PATH`.
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/willmadison/invoicer/releases/latest/download/invoicer_darwin_arm64.tar.gz | tar xz
+curl -L https://github.com/OPPF-IHQ-IT/invoicer/releases/latest/download/invoicer_darwin_arm64.tar.gz | tar xz
 mv invoicer /usr/local/bin/
 
 # macOS (Intel)
-curl -L https://github.com/willmadison/invoicer/releases/latest/download/invoicer_darwin_amd64.tar.gz | tar xz
+curl -L https://github.com/OPPF-IHQ-IT/invoicer/releases/latest/download/invoicer_darwin_amd64.tar.gz | tar xz
 mv invoicer /usr/local/bin/
 
 # Linux (amd64)
-curl -L https://github.com/willmadison/invoicer/releases/latest/download/invoicer_linux_amd64.tar.gz | tar xz
+curl -L https://github.com/OPPF-IHQ-IT/invoicer/releases/latest/download/invoicer_linux_amd64.tar.gz | tar xz
 mv invoicer /usr/local/bin/
 ```
 
@@ -31,7 +31,7 @@ mv invoicer /usr/local/bin/
 Requires Go 1.22+.
 
 ```bash
-go install github.com/willmadison/invoicer/cmd/invoicer@latest
+go install github.com/OPPF-IHQ-IT/invoicer/cmd/invoicer@latest
 ```
 
 ---

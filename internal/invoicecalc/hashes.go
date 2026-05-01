@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // HashLineItems produces a stable hash of a normalized line-item set.

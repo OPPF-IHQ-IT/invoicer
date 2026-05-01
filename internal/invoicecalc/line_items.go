@@ -1,8 +1,8 @@
 package invoicecalc
 
 import (
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // lineItem is an intermediate representation before becoming a QBO InvoiceLine.

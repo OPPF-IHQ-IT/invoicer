@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/willmadison/invoicer/internal/config"
-	"github.com/willmadison/invoicer/internal/planner"
-	"github.com/willmadison/invoicer/internal/qbo"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/planner"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // SendInvoices sends eligible previously-created invoices for the fiscal year.

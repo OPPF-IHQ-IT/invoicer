@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/willmadison/invoicer/internal/airtable"
-	"github.com/willmadison/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
 
 // Options controls the reconciliation run.
