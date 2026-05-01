@@ -8,7 +8,13 @@ Built for KRS (Keeper of Records and Seal) officers, but designed to be chapter-
 
 ## Installation
 
-### Download a release binary (recommended)
+### Homebrew (recommended for macOS)
+
+```bash
+brew install oppf-ihq-it/invoicer/invoicer
+```
+
+### Download a release binary
 
 Download the latest binary for your platform from the [Releases](https://github.com/OPPF-IHQ-IT/invoicer/releases) page and place it on your `PATH`.
 
@@ -38,33 +44,29 @@ go install github.com/OPPF-IHQ-IT/invoicer/cmd/invoicer@latest
 
 ## Setup
 
-### 1. Create your config file
+### 1. Run the setup wizard
 
 ```bash
-mkdir -p ~/.config/invoicer
-cp config.example.yaml ~/.config/invoicer/config.yaml
+invoicer setup
 ```
 
-Edit `~/.config/invoicer/config.yaml` and fill in your Airtable base ID, table/field names, and QBO item IDs. See [Configuration](#configuration) below.
+This walks you through entering your QBO credentials and Airtable details, then writes `~/.config/invoicer/config.yaml` for you.
 
-### 2. Set environment variables
-
-```bash
-export AIRTABLE_API_KEY=your_airtable_api_key
-export QBO_CLIENT_ID=your_qbo_client_id
-export QBO_CLIENT_SECRET=your_qbo_client_secret
-```
-
-Add these to your shell profile (`.zshrc`, `.bashrc`) so they persist between sessions.
-
-### 3. Authenticate with QuickBooks Online
+### 2. Authenticate with QuickBooks Online
 
 ```bash
-invoicer auth --env sandbox    # for sandbox testing
-invoicer auth --env production # for production
+invoicer auth login --env production
 ```
 
 This opens your browser for the QBO OAuth flow and saves a token to `~/.config/invoicer/qbo-token.json`.
+
+### 3. Map your QBO item IDs
+
+```bash
+invoicer qbo doctor
+```
+
+This lists all products in your QBO account. Copy the IDs for each dues component into the `qbo_items` section of `~/.config/invoicer/config.yaml`.
 
 ---
 
@@ -72,18 +74,21 @@ This opens your browser for the QBO OAuth flow and saves a token to `~/.config/i
 
 ### Reconcile QBO customers against Airtable members
 
-Export your QBO customer list to CSV from QuickBooks Online, then run:
+Pulls customers directly from QBO and matches them to Airtable members by control number (stored in the QBO Notes field) or email.
 
 ```bash
 # Dry run — preview matches without making changes
-invoicer customers reconcile --file qbo-customers.csv
+invoicer customers reconcile
 
 # Write matched QBO Customer IDs back to Airtable
-invoicer customers reconcile --file qbo-customers.csv --update-airtable \
+invoicer customers reconcile --update-airtable --no-dry-run \
   --matched-out matched.csv \
   --ambiguous-out ambiguous.csv \
-  --unmatched-out unmatched.csv
+  --unmatched-out unmatched.csv \
+  --skipped-out skipped.csv
 ```
+
+Members flagged as ambiguous (multiple QBO matches) or unmatched (no QBO customer found) will need to be resolved manually before invoicing.
 
 ### Preview what would be invoiced
 
