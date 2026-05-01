@@ -14,13 +14,14 @@ import (
 
 // Options controls the reconciliation run.
 type Options struct {
-	DryRun         bool
-	UpdateAirtable bool
-	Overwrite      bool
-	AmbiguousOut   string
-	MatchedOut     string
-	UnmatchedOut   string
-	SkippedOut     string
+	DryRun          bool
+	UpdateAirtable  bool
+	Overwrite       bool
+	CreateMissing   bool // create QBO customers for unmatched members who have an email
+	AmbiguousOut    string
+	MatchedOut      string
+	UnmatchedOut    string
+	SkippedOut      string
 }
 
 type matchResult struct {
@@ -67,7 +68,7 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 
 	var results []matchResult
 	stats := struct {
-		total, skipped, noLongerMember, byControlNumber, byEmail, ambiguous, unmatched, noEmail int
+		total, skipped, noLongerMember, byControlNumber, byEmail, ambiguous, unmatched, noEmail, created int
 	}{total: len(members)}
 
 	for _, m := range members {
@@ -146,6 +147,34 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
+	if opts.CreateMissing && !opts.DryRun {
+		for i, r := range results {
+			if !r.Unmatched || r.Member.Email == "" {
+				continue
+			}
+			displayName := r.Member.Name
+			if displayName == "" {
+				displayName = r.Member.Email
+			}
+			cust, err := qboClient.CreateCustomer(ctx, displayName, r.Member.Email, r.Member.ControlNumber)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "warning: creating QBO customer for %s: %v\n", r.Member.ControlNumber, err)
+				continue
+			}
+			if opts.UpdateAirtable {
+				if err := atClient.UpdateMemberQBOCustomerID(ctx, &cfg.Airtable, r.Member.RecordID, cust.ID); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: updating QBO Customer ID for %s: %v\n", r.Member.ControlNumber, err)
+				}
+			}
+			results[i].QBOCustomer = cust
+			results[i].Unmatched = false
+			results[i].MatchedBy = "created"
+			stats.unmatched--
+			stats.created++
+			fmt.Printf("  Created QBO customer for %s (%s) → ID %s\n", r.Member.ControlNumber, r.Member.Email, cust.ID)
+		}
+	}
+
 	fmt.Printf("Reconciliation summary:\n")
 	fmt.Printf("  Total Airtable members scanned:        %d\n", stats.total)
 	fmt.Printf("  Total QBO customers loaded:            %d\n", len(customers))
@@ -156,6 +185,7 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 	fmt.Printf("  Matched by email:                      %d\n", stats.byEmail)
 	fmt.Printf("  Ambiguous:                             %d\n", stats.ambiguous)
 	fmt.Printf("  Unmatched:                             %d\n", stats.unmatched)
+	fmt.Printf("  Created in QBO:                        %d\n", stats.created)
 	if opts.DryRun {
 		fmt.Println("\nDry run — no Airtable changes made.")
 	}

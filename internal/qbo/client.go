@@ -130,6 +130,31 @@ func (c *Client) ListItems(ctx context.Context) ([]Item, error) {
 	return items, nil
 }
 
+// CreateCustomer creates a new QBO customer record.
+func (c *Client) CreateCustomer(ctx context.Context, displayName, email, notes string) (*Customer, error) {
+	payload := map[string]interface{}{
+		"DisplayName": displayName,
+		"Notes":       notes,
+	}
+	if email != "" {
+		payload["PrimaryEmailAddr"] = map[string]interface{}{"Address": email}
+	}
+
+	body, err := c.post(ctx, "customer", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Customer map[string]interface{} `json:"Customer"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+	cust := parseCustomer(result.Customer)
+	return &cust, nil
+}
+
 // ListCustomers returns all active QBO customers.
 func (c *Client) ListCustomers(ctx context.Context) ([]Customer, error) {
 	q := "SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000"

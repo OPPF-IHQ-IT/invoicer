@@ -6,6 +6,7 @@ import "time"
 type Member struct {
 	RecordID         string
 	ControlNumber    string
+	Name             string
 	Email            string
 	Status           string
 	QBOCustomerID    string

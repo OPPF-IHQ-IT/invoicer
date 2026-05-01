@@ -121,6 +121,7 @@ type AirtableFieldsConfig struct {
 
 type MembersFieldsConfig struct {
 	ControlNumber   string `yaml:"control_number"`
+	Name            string `yaml:"name"`
 	Email           string `yaml:"email"`
 	Status          string `yaml:"status"`
 	QBOCustomerID   string `yaml:"qbo_customer_id"`
@@ -236,6 +237,9 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.QBOItems.PollWorkerCreditUnit == 0 {
 		cfg.QBOItems.PollWorkerCreditUnit = 50.0
+	}
+	if cfg.Airtable.Fields.Members.Name == "" {
+		cfg.Airtable.Fields.Members.Name = "Name"
 	}
 	if cfg.FiscalYear.StartMonth == 0 {
 		cfg.FiscalYear.StartMonth = 11

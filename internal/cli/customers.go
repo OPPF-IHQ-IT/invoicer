@@ -16,6 +16,7 @@ type ReconcileCmd struct {
 	DryRun         bool   `help:"Preview matches without updating Airtable." default:"true" negatable:""`
 	UpdateAirtable bool   `help:"Write matched QBO Customer IDs back to Airtable."`
 	Overwrite      bool   `help:"Overwrite existing QBO Customer ID values in Airtable."`
+	CreateMissing  bool   `help:"Create QBO customer records for unmatched members who have an email address."`
 	AmbiguousOut   string `help:"Write ambiguous matches to this CSV file." type:"path"`
 	MatchedOut     string `help:"Write matched records to this CSV file." type:"path"`
 	UnmatchedOut   string `help:"Write unmatched records to this CSV file." type:"path"`
@@ -32,6 +33,7 @@ func (r *ReconcileCmd) Run(globals *Globals) error {
 		DryRun:         r.DryRun,
 		UpdateAirtable: r.UpdateAirtable,
 		Overwrite:      r.Overwrite,
+		CreateMissing:  r.CreateMissing,
 		AmbiguousOut:   r.AmbiguousOut,
 		MatchedOut:     r.MatchedOut,
 		UnmatchedOut:   r.UnmatchedOut,

@@ -80,6 +80,7 @@ airtable:
   fields:
     members:
       control_number: "Control #"
+      name: "Name"
       email: "Email"
       status: "Status"
       qbo_customer_id: "QBO Customer ID"

@@ -41,6 +41,7 @@ func (c *Client) ListInvoiceableMembers(ctx context.Context, cfg *config.Airtabl
 		members = append(members, Member{
 			RecordID:         r.ID,
 			ControlNumber:    stringField(r, f.ControlNumber),
+			Name:             stringField(r, f.Name),
 			Email:            stringField(r, f.Email),
 			Status:           stringField(r, f.Status),
 			QBOCustomerID:    stringField(r, f.QBOCustomerID),
@@ -89,6 +90,7 @@ func (c *Client) ListAllMembers(ctx context.Context, cfg *config.AirtableConfig)
 		members = append(members, Member{
 			RecordID:         r.ID,
 			ControlNumber:    stringField(r, f.ControlNumber),
+			Name:             stringField(r, f.Name),
 			Email:            stringField(r, f.Email),
 			Status:           stringField(r, f.Status),
 			QBOCustomerID:    stringField(r, f.QBOCustomerID),
