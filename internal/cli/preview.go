@@ -35,7 +35,8 @@ func (p *PreviewCmd) Run(globals *Globals) error {
 		return fmt.Errorf("invalid fiscal year %q: %w", p.FiscalYear, err)
 	}
 
-	asOf := time.Now().Local().Truncate(24 * time.Hour)
+	now := time.Now().Local()
+	asOf := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	if p.AsOf != "" {
 		asOf, err = time.ParseInLocation("2006-01-02", p.AsOf, time.Local)
 		if err != nil {
