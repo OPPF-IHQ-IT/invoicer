@@ -58,6 +58,11 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		}
 		lines = append(lines, lineItem{ItemID: items.InternationalMSP, Description: "Recent MSP (International)", Amount: -intl.Amount})
 	}
+	if input.FY.IsLate(input.AsOf) {
+		if fee, ok := schedule.resolve("International Late Fee"); ok {
+			lines = append(lines, lineItem{ItemID: items.InternationalLateFee, Description: "International Late Fee", Amount: fee.Amount})
+		}
+	}
 
 	// District
 	dist, ok := schedule.resolve("District")
@@ -77,6 +82,11 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		}
 		lines = append(lines, lineItem{ItemID: items.DistrictMSP, Description: "Recent MSP (District)", Amount: -dist.Amount})
 	}
+	if input.FY.IsLate(input.AsOf) {
+		if fee, ok := schedule.resolve("District Late Fee"); ok {
+			lines = append(lines, lineItem{ItemID: items.DistrictLateFee, Description: "District Late Fee", Amount: fee.Amount})
+		}
+	}
 
 	// State
 	state, ok := schedule.resolve("State")
@@ -95,6 +105,11 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.StateMSP, Description: "Recent MSP (State)", Amount: -state.Amount})
+	}
+	if input.FY.IsLate(input.AsOf) {
+		if fee, ok := schedule.resolve("State Late Fee"); ok {
+			lines = append(lines, lineItem{ItemID: items.StateLateFee, Description: "State Late Fee", Amount: fee.Amount})
+		}
 	}
 
 	// Local — priority: BE > LocalLife > Retired > Standard

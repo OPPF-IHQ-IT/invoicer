@@ -32,6 +32,9 @@ qbo_items:
   state: ""                         # QBO Item ID for State dues
   local: ""                         # QBO Item ID for Local dues
   local_retiree: ""                 # QBO Item ID for Local (Retiree) dues
+  international_late_fee: ""        # QBO Item ID for International Late Fee
+  district_late_fee: ""             # QBO Item ID for District Late Fee
+  state_late_fee: ""                # QBO Item ID for State Late Fee
   local_late_fee: ""                # QBO Item ID for Local Late Fee
   international_life_membership: "" # QBO Item ID for International Life Membership offset
   district_life_membership: ""      # QBO Item ID for District Life Membership offset

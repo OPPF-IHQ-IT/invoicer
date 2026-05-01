@@ -72,6 +72,9 @@ type QBOItemsConfig struct {
 	State                    string `yaml:"state"`
 	Local                    string `yaml:"local"`
 	LocalRetiree             string `yaml:"local_retiree"`
+	InternationalLateFee     string `yaml:"international_late_fee"`
+	DistrictLateFee          string `yaml:"district_late_fee"`
+	StateLateFee             string `yaml:"state_late_fee"`
 	LocalLateFee             string `yaml:"local_late_fee"`
 	InternationalLifeMember  string `yaml:"international_life_membership"`
 	DistrictLifeMember       string `yaml:"district_life_membership"`
