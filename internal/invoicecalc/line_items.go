@@ -63,6 +63,16 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 			lines = append(lines, lineItem{ItemID: items.InternationalLateFee, Description: "International Late Fee", Amount: fee.Amount})
 		}
 	}
+	// International Reinstatement — additive for Reclaimable members only.
+	// Reclaimable and IntlLife are mutually exclusive by definition.
+	if input.Member.Reclaimable {
+		if items.InternationalReinstatement == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		if reinstatement, ok := schedule.resolve("International Reinstatement"); ok {
+			lines = append(lines, lineItem{ItemID: items.InternationalReinstatement, Description: "International Reinstatement", Amount: reinstatement.Amount})
+		}
+	}
 
 	// District
 	dist, ok := schedule.resolve("District")
@@ -118,17 +128,6 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		return nil, skip
 	}
 	lines = append(lines, localLines...)
-
-	// International Reinstatement — additive for Reclaimable members only.
-	// Reclaimable and IntlLife are mutually exclusive by definition.
-	if input.Member.Reclaimable {
-		if items.InternationalReinstatement == "" {
-			return nil, SkipReasonQBOItemMappingMissing
-		}
-		if reinstatement, ok := schedule.resolve("International Reinstatement"); ok {
-			lines = append(lines, lineItem{ItemID: items.InternationalReinstatement, Description: "International Reinstatement", Amount: reinstatement.Amount})
-		}
-	}
 
 	// Late fee
 	if input.FY.IsLate(input.AsOf) {
