@@ -1,0 +1,98 @@
+app:
+  default_environment: sandbox
+  report_dir: ./.invoicer-runs
+
+fiscal_year:
+  start_month: 11
+  start_day: 1
+  end_month: 10
+  end_day: 31
+  airtable_format: "YYYY-YYYY"
+
+qbo:
+  # Set QBO_CLIENT_ID and QBO_CLIENT_SECRET in your environment — never commit these values.
+  client_id: "${QBO_CLIENT_ID}"
+  client_secret: "${QBO_CLIENT_SECRET}"
+  redirect_host: localhost
+  redirect_port: 8484
+  environment: sandbox
+  sandbox_base_url: "https://sandbox-quickbooks.api.intuit.com"
+  production_base_url: "https://quickbooks.api.intuit.com"
+
+# QBO Item IDs for each dues component and offset product.
+# Run `invoicer qbo doctor` to list available items.
+# All values are chapter-specific — these are Chi Tau Chapter defaults.
+qbo_items:
+  international: ""                 # QBO Item ID for International dues
+  district: ""                      # QBO Item ID for District dues
+  state: ""                         # QBO Item ID for State dues
+  local: ""                         # QBO Item ID for Local dues
+  local_retiree: ""                 # QBO Item ID for Local (Retiree) dues
+  local_late_fee: ""                # QBO Item ID for Local Late Fee
+  international_life_membership: "" # QBO Item ID for International Life Membership offset
+  district_life_membership: ""      # QBO Item ID for District Life Membership offset
+  state_life_membership: ""         # QBO Item ID for State Life Membership offset
+  local_life_membership: ""         # QBO Item ID for local life membership offset (e.g. "Chi Tau Life Membership")
+  basileus_emeritus_offset: ""      # QBO Item ID for Basileus Emeritus local dues offset
+  poll_worker_credit: ""            # QBO Item ID for Poll Worker Dues Credit
+  international_reinstatement: ""   # QBO Item ID for International Reinstatement
+
+airtable:
+  # Set AIRTABLE_API_KEY in your environment — never commit this value.
+  api_key: "${AIRTABLE_API_KEY}"
+  base_id: "appXXXXXXXXXXXXXX"
+
+  tables:
+    members: "Members"
+    dues_records: "Dues Records"
+    dues_schedule: "Dues Schedule"
+    poll_worker_credit_utilization: "Poll Worker Dues Credit Utilization"
+
+  views:
+    members: "Internal Administrative Roster"
+    dues_records: "Grid view"
+    dues_schedule: "Grid view"
+
+  # Status values — adjust if your chapter uses different Airtable values.
+  invoiceable_statuses:
+    - "Invoicable"
+
+  status_values:
+    invoiceable: "Invoicable"
+    invoiced: "Invoiced"
+    active: "Active"
+
+  fields:
+    members:
+      control_number: "Control #"
+      email: "Email"
+      status: "Status"
+      qbo_customer_id: "QBO Customer ID"
+      intl_life: "Intl Life?"
+      district_life: "District Life?"
+      state_life: "State Life?"
+      local_life: "Chi Tau Life?"        # rename to match your chapter's local life membership field
+      basileus_emeritus: "Basileus Emeritus?"
+      retired: "Retired?"
+
+    dues_schedule:
+      id: "ID"
+      fiscal_year: "Fiscal Year"
+      level: "Level"
+      amount: "Amount"
+      due_date: "Due Date"
+      key: "Key"
+
+    poll_worker_credits:
+      member_link: "Members"
+      fiscal_year: "Fiscal Year"
+      credits_earned: "Poll Worker Dues Credits Earned"
+      credits_spent: "Poll Worker Dues Credits Spent"
+      credits_available: "Poll Worker Dues Credits Available"
+
+invoice:
+  due_on_receipt: true
+  auto_number: true
+  allow_name_fallback_in_run: false
+  create_missing_customers: false
+  default_run_mode_requires_explicit_action: true

@@ -27,6 +27,14 @@ go.work.sum
 # env file
 .env
 
+# invoicer — never commit real config or tokens
+config.yaml
+~/.config/invoicer/
+.invoicer-runs/
+
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# GoReleaser dist
+dist/
