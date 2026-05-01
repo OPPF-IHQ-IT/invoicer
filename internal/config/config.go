@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+
+
 type Config struct {
 	App        AppConfig        `yaml:"app"`
 	FiscalYear FiscalYearConfig `yaml:"fiscal_year"`
@@ -36,6 +38,10 @@ type QBOConfig struct {
 	ClientSecret       string `yaml:"client_secret"`
 	RedirectHost       string `yaml:"redirect_host"`
 	RedirectPort       int    `yaml:"redirect_port"`
+	// RedirectURI overrides the constructed redirect URI sent to Intuit.
+	// Required for production when using an HTTPS relay (e.g. a Cloudflare Worker)
+	// while still listening on localhost for the actual callback.
+	RedirectURI        string `yaml:"redirect_uri"`
 	Environment        string `yaml:"environment"`
 	SandboxBaseURL     string `yaml:"sandbox_base_url"`
 	ProductionBaseURL  string `yaml:"production_base_url"`
@@ -46,6 +52,16 @@ func (q QBOConfig) BaseURL() string {
 		return q.ProductionBaseURL
 	}
 	return q.SandboxBaseURL
+}
+
+// OAuthRedirectURI returns the redirect URI to send to Intuit.
+// If RedirectURI is explicitly set (e.g. a Cloudflare Worker relay), use that.
+// Otherwise construct from host and port.
+func (q QBOConfig) OAuthRedirectURI() string {
+	if q.RedirectURI != "" {
+		return q.RedirectURI
+	}
+	return fmt.Sprintf("http://%s:%d/callback", q.RedirectHost, q.RedirectPort)
 }
 
 // QBOItemsConfig maps dues schedule levels to QBO Item IDs.

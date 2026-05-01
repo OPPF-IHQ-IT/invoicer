@@ -15,6 +15,10 @@ qbo:
   client_secret: "${QBO_CLIENT_SECRET}"
   redirect_host: localhost
   redirect_port: 8484
+  # redirect_uri overrides the redirect URI sent to Intuit during OAuth.
+  # Required for production — set to your Cloudflare Worker relay URL.
+  # Leave commented out for sandbox (localhost is used automatically).
+  # redirect_uri: "https://invoicer.wmadisondev.workers.dev/callback"
   environment: sandbox
   sandbox_base_url: "https://sandbox-quickbooks.api.intuit.com"
   production_base_url: "https://quickbooks.api.intuit.com"

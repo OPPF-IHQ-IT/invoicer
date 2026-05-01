@@ -30,7 +30,7 @@ func RunOAuthFlow(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
-	redirectURI := fmt.Sprintf("http://%s:%d/callback", cfg.QBO.RedirectHost, cfg.QBO.RedirectPort)
+	redirectURI := cfg.QBO.OAuthRedirectURI()
 
 	authParams := url.Values{
 		"client_id":     {cfg.QBO.ClientID},
