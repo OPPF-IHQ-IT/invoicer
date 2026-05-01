@@ -2,6 +2,14 @@ package qbo
 
 import "time"
 
+type Item struct {
+	ID          string
+	Name        string
+	Description string
+	Type        string
+	Active      bool
+}
+
 type Customer struct {
 	ID            string
 	DisplayName   string

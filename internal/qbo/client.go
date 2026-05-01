@@ -100,6 +100,36 @@ func sanitizeBody(b []byte) string {
 	return s
 }
 
+// ListItems returns all active QBO items (products and services).
+func (c *Client) ListItems(ctx context.Context) ([]Item, error) {
+	q := "SELECT * FROM Item WHERE Active = true MAXRESULTS 1000"
+	body, err := c.query(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		QueryResponse struct {
+			Item []map[string]interface{} `json:"Item"`
+		} `json:"QueryResponse"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	items := make([]Item, 0, len(result.QueryResponse.Item))
+	for _, raw := range result.QueryResponse.Item {
+		items = append(items, Item{
+			ID:          stringVal(raw, "Id"),
+			Name:        stringVal(raw, "Name"),
+			Description: stringVal(raw, "Description"),
+			Type:        stringVal(raw, "Type"),
+			Active:      boolVal(raw, "Active"),
+		})
+	}
+	return items, nil
+}
+
 // ListCustomers returns all active QBO customers.
 func (c *Client) ListCustomers(ctx context.Context) ([]Customer, error) {
 	q := "SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000"

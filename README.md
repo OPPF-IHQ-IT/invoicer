@@ -42,7 +42,7 @@ go install github.com/OPPF-IHQ-IT/invoicer/cmd/invoicer@latest
 
 ---
 
-## Setup
+## Getting started
 
 ### 1. Run the setup wizard
 
@@ -50,7 +50,7 @@ go install github.com/OPPF-IHQ-IT/invoicer/cmd/invoicer@latest
 invoicer setup
 ```
 
-This walks you through entering your QBO credentials and Airtable details, then writes `~/.config/invoicer/config.yaml` for you.
+This walks you through entering your QBO credentials and Airtable details, then writes `~/.config/invoicer/config.yaml`. On a fresh install with no config, running `invoicer` with no arguments launches the wizard automatically.
 
 ### 2. Authenticate with QuickBooks Online
 
@@ -58,58 +58,157 @@ This walks you through entering your QBO credentials and Airtable details, then 
 invoicer auth login --env production
 ```
 
-This opens your browser for the QBO OAuth flow and saves a token to `~/.config/invoicer/qbo-token.json`.
+Opens your browser for the Intuit OAuth flow and saves a token to `~/.config/invoicer/qbo-token.json`.
 
 ### 3. Map your QBO item IDs
 
 ```bash
-invoicer qbo doctor
+invoicer setup items
 ```
 
-This lists all products in your QBO account. Copy the IDs for each dues component into the `qbo_items` section of `~/.config/invoicer/config.yaml`.
+Fetches your QBO product list and walks through selecting the right product for each dues component interactively. Writes the IDs directly to your config — no copy-pasting required.
+
+### 4. Reconcile QBO customers against Airtable members
+
+```bash
+invoicer customers reconcile
+```
+
+Matches Airtable members to QBO customers by control number (stored in the QBO Notes field) or email. Once everyone is matched, run with `--update-airtable --no-dry-run` to write Customer IDs back to Airtable.
+
+### 5. Preview what would be invoiced
+
+```bash
+invoicer preview --fiscal-year FY2026
+```
 
 ---
 
-## Usage
+## Command reference
 
-### Reconcile QBO customers against Airtable members
+### `invoicer setup`
 
-Pulls customers directly from QBO and matches them to Airtable members by control number (stored in the QBO Notes field) or email.
+Interactive wizard to create `~/.config/invoicer/config.yaml`.
 
 ```bash
-# Dry run — preview matches without making changes
+invoicer setup
+```
+
+#### `invoicer setup items`
+
+Interactively map QBO products to dues components and write the IDs to config. Requires auth to be completed first.
+
+```bash
+invoicer setup items
+```
+
+---
+
+### `invoicer auth`
+
+#### `invoicer auth login`
+
+Authenticate with QuickBooks Online via OAuth. Opens your browser and saves a token to `~/.config/invoicer/qbo-token.json`.
+
+```bash
+invoicer auth login --env production   # production (default)
+invoicer auth login --env sandbox      # sandbox / testing
+```
+
+#### `invoicer auth status`
+
+Show current authentication status and token expiry.
+
+```bash
+invoicer auth status
+```
+
+#### `invoicer auth logout`
+
+Remove stored QBO credentials.
+
+```bash
+invoicer auth logout
+```
+
+---
+
+### `invoicer customers`
+
+#### `invoicer customers reconcile`
+
+Match Airtable members to QBO customers and optionally write Customer IDs back to Airtable. Dry run is on by default.
+
+```bash
+# Preview matches (dry run)
 invoicer customers reconcile
 
-# Write matched QBO Customer IDs back to Airtable
+# Write matched IDs to Airtable
+invoicer customers reconcile --update-airtable --no-dry-run
+
+# With output CSVs for review
 invoicer customers reconcile --update-airtable --no-dry-run \
   --matched-out matched.csv \
   --ambiguous-out ambiguous.csv \
   --unmatched-out unmatched.csv \
   --skipped-out skipped.csv
+
+# Re-run and overwrite already-mapped members
+invoicer customers reconcile --update-airtable --no-dry-run --overwrite
 ```
 
-Members flagged as ambiguous (multiple QBO matches) or unmatched (no QBO customer found) will need to be resolved manually before invoicing.
+Members in the **ambiguous** file have multiple possible QBO matches and need manual resolution. Members in **unmatched** have no QBO customer record and may need one created. Members in **skipped** were excluded (no email address, or marked "No Longer in Chi Tau").
 
-### Preview what would be invoiced
+---
+
+### `invoicer preview`
+
+Preview what invoicer would create or send without making any changes.
 
 ```bash
+# Preview all invoices for a fiscal year
 invoicer preview --fiscal-year FY2026
+
+# Override today's date (e.g. to test late fee logic)
 invoicer preview --fiscal-year FY2026 --as-of 2026-01-15
+
+# Preview which invoices would be sent (email status check)
+invoicer preview --fiscal-year FY2026 --send
+
+# JSON output
 invoicer preview --fiscal-year FY2026 --format json
-invoicer preview --fiscal-year FY2026 --send   # preview which invoices would be sent
+
+# Write report to a file
+invoicer preview --fiscal-year FY2026 --out preview.json
+
+# Override QBO environment for this run
+invoicer preview --fiscal-year FY2026 --env sandbox
 ```
 
-### Create invoices
+---
+
+### `invoicer run`
+
+Execute invoice creation or sending. Exactly one of `--create-only` or `--send` is required.
 
 ```bash
-# Create invoices in QBO — does not send them
+# Create invoices in QBO (does not send them — review in QBO first)
 invoicer run --fiscal-year FY2026 --create-only
 
-# After reviewing invoices in QBO, send them
+# Send previously-created invoices
 invoicer run --fiscal-year FY2026 --send
+
+# Override QBO environment for this run
+invoicer run --fiscal-year FY2026 --create-only --env sandbox
 ```
 
-### Validate config
+---
+
+### `invoicer config`
+
+#### `invoicer config validate`
+
+Validate your config file and report any missing or misconfigured values.
 
 ```bash
 invoicer config validate
@@ -117,11 +216,29 @@ invoicer config validate
 
 ---
 
-## Fiscal Year Format
+### `invoicer qbo`
+
+#### `invoicer qbo doctor`
+
+List all active QBO products and their IDs. Useful for identifying item IDs to put in your config.
+
+```bash
+invoicer qbo doctor
+```
+
+---
+
+### `invoicer airtable`
+
+Airtable diagnostics. Run `invoicer airtable --help` for available subcommands.
+
+---
+
+## Fiscal year format
 
 Fiscal years are specified as `FY2026` or `2026`.
 
-| CLI | Period | Airtable Label |
+| CLI | Period | Airtable label |
 |---|---|---|
 | `FY2026` | 2025-11-01 to 2026-10-31 | 2025-2026 |
 | `FY2027` | 2026-11-01 to 2027-10-31 | 2026-2027 |
@@ -132,9 +249,9 @@ Late fees apply on or after January 1 of the fiscal year.
 
 ## Configuration
 
-Copy `config.example.yaml` to `~/.config/invoicer/config.yaml` and customize.
+The config file lives at `~/.config/invoicer/config.yaml` and is created by `invoicer setup`. See `config.example.yaml` in this repo for the full reference with comments.
 
-**Secrets must never be committed.** Use environment variables:
+**Secrets** (API keys, QBO client ID/secret) can be stored directly in the config file or via environment variables:
 
 | Config key | Environment variable |
 |---|---|
@@ -150,8 +267,8 @@ All Airtable table names, field names, and QBO item IDs are configurable so any 
 
 ```
 ~/.config/invoicer/
-  config.yaml       # your config (not committed)
-  qbo-token.json    # OAuth token (not committed, 0600 permissions)
+  config.yaml       # your config (chmod 600, never committed)
+  qbo-token.json    # OAuth token (chmod 600, never committed)
 ```
 
 ---
