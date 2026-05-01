@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"sort"
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 type ConfigCmd struct {
@@ -42,6 +45,28 @@ func (a *AirtableDoctorCmd) Run(globals *Globals) error {
 }
 
 func (q *QboDoctorCmd) Run(globals *Globals) error {
-	fmt.Println("qbo doctor: not yet implemented")
+	cfg, err := config.Load(globals.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	client, err := qbo.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	items, err := client.ListItems(context.Background())
+	if err != nil {
+		return fmt.Errorf("listing QBO items: %w", err)
+	}
+
+	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+
+	fmt.Printf("QBO connection OK — %d active items:\n\n", len(items))
+	fmt.Printf("%-10s  %-10s  %s\n", "ID", "Type", "Name")
+	fmt.Printf("%-10s  %-10s  %s\n", "----------", "----------", "--------------------")
+	for _, item := range items {
+		fmt.Printf("%-10s  %-10s  %s\n", item.ID, item.Type, item.Name)
+	}
 	return nil
 }
