@@ -58,9 +58,10 @@ type ItemRef struct {
 }
 
 type InvoiceCreateRequest struct {
-	CustomerRef CustomerRef
-	TxnDate     string
-	DueDate     string
-	PrivateNote string
-	Line        []InvoiceLine
+	CustomerRef  CustomerRef
+	TxnDate      string
+	DueDate      string
+	PrivateNote  string
+	CustomerMemo string
+	Line         []InvoiceLine
 }

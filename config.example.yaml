@@ -116,3 +116,4 @@ invoice:
   allow_name_fallback_in_run: false
   create_missing_customers: false
   default_run_mode_requires_explicit_action: true
+  customer_memo: ""  # Message displayed on invoice/sales receipt to the member

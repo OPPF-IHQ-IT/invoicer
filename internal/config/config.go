@@ -163,11 +163,12 @@ type AirtableStatusValuesConfig struct {
 }
 
 type InvoiceConfig struct {
-	DueOnReceipt                 bool `yaml:"due_on_receipt"`
-	AutoNumber                   bool `yaml:"auto_number"`
-	AllowNameFallbackInRun       bool `yaml:"allow_name_fallback_in_run"`
-	CreateMissingCustomers       bool `yaml:"create_missing_customers"`
-	DefaultRunModeRequiresExplicit bool `yaml:"default_run_mode_requires_explicit_action"`
+	DueOnReceipt                 bool   `yaml:"due_on_receipt"`
+	AutoNumber                   bool   `yaml:"auto_number"`
+	AllowNameFallbackInRun       bool   `yaml:"allow_name_fallback_in_run"`
+	CreateMissingCustomers       bool   `yaml:"create_missing_customers"`
+	DefaultRunModeRequiresExplicit bool  `yaml:"default_run_mode_requires_explicit_action"`
+	CustomerMemo                 string `yaml:"customer_memo"`
 }
 
 // Load reads and parses the config file, expanding environment variables.

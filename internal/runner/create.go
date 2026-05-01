@@ -36,11 +36,12 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 		privateNote := planner.BuildPrivateNote(plan.FY, mp.Member.RecordID, mp.CalcResult.LineHash, runID)
 
 		inv, err := qboClient.CreateInvoice(ctx, qbo.InvoiceCreateRequest{
-			CustomerRef: qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
-			TxnDate:     mp.InvoiceDate,
-			DueDate:     mp.DueDate,
-			PrivateNote: privateNote,
-			Line:        mp.CalcResult.Lines,
+			CustomerRef:  qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
+			TxnDate:      mp.InvoiceDate,
+			DueDate:      mp.DueDate,
+			PrivateNote:  privateNote,
+			CustomerMemo: cfg.Invoice.CustomerMemo,
+			Line:         mp.CalcResult.Lines,
 		})
 		if err != nil {
 			mp.Action = planner.ActionError

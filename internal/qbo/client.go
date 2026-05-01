@@ -353,7 +353,7 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 		lines = append(lines, line)
 	}
 
-	return map[string]interface{}{
+	payload := map[string]interface{}{
 		"CustomerRef": map[string]interface{}{
 			"value": req.CustomerRef.Value,
 		},
@@ -362,6 +362,10 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 		"PrivateNote": req.PrivateNote,
 		"Line":        lines,
 	}
+	if req.CustomerMemo != "" {
+		payload["CustomerMemo"] = map[string]interface{}{"value": req.CustomerMemo}
+	}
+	return payload
 }
 
 func stringVal(m map[string]interface{}, key string) string {
