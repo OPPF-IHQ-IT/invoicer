@@ -34,8 +34,9 @@ var testItems = config.QBOItemsConfig{
 	DistrictLifeMember:      "ITEM_DIST_LIFE",
 	StateLifeMember:         "ITEM_STATE_LIFE",
 	LocalLifeMember:         "ITEM_LOCAL_LIFE",
-	BasileusEmeritusOffset:  "ITEM_BE",
-	PollWorkerCredit:        "ITEM_PWC",
+	BasileusEmeritusOffset:     "ITEM_BE",
+	PollWorkerCredit:           "ITEM_PWC",
+	InternationalReinstatement: "ITEM_REINSTATEMENT",
 }
 
 func activeMember() airtable.Member {
@@ -162,6 +163,24 @@ func TestCalculate_DuesScheduleConflict(t *testing.T) {
 	})
 	if result.SkipReason != SkipReasonDuesScheduleConflict {
 		t.Errorf("expected dues_schedule_conflict, got %q", result.SkipReason)
+	}
+}
+
+func TestCalculate_ReclaimableMemberOwesReinstatement(t *testing.T) {
+	m := activeMember()
+	m.Reclaimable = true
+	schedule := append(testSchedule, airtable.DuesScheduleRow{
+		FiscalYear: "2025-2026", Level: "International Reinstatement", Amount: 3.00,
+	})
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: schedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	want := 125.00 + 20.00 + 15.00 + 198.00 + 3.00
+	if result.Total != want {
+		t.Errorf("Reclaimable total: got %.2f, want %.2f", result.Total, want)
 	}
 }
 

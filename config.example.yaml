@@ -60,9 +60,11 @@ airtable:
   # Status values — adjust if your chapter uses different Airtable values.
   invoiceable_statuses:
     - "Invoicable"
+    - "Reclaimable"
 
   status_values:
     invoiceable: "Invoicable"
+    reclaimable: "Reclaimable"
     invoiced: "Invoiced"
     active: "Active"
 

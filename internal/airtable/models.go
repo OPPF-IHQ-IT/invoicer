@@ -4,17 +4,20 @@ import "time"
 
 // Member represents a row from the Members table.
 type Member struct {
-	RecordID        string
-	ControlNumber   string
-	Email           string
-	Status          string
-	QBOCustomerID   string
-	IntlLife        bool
-	DistrictLife    bool
-	StateLife       bool
-	LocalLife       bool
+	RecordID         string
+	ControlNumber    string
+	Email            string
+	Status           string
+	QBOCustomerID    string
+	IntlLife         bool
+	DistrictLife     bool
+	StateLife        bool
+	LocalLife        bool
 	BasileusEmeritus bool
-	Retired         bool
+	Retired          bool
+	// Reclaimable is true when Status == the configured reclaimable status value.
+	// These members are invoiceable but also owe an International Reinstatement fee.
+	Reclaimable bool
 }
 
 // DuesRecord represents a row from the Dues Records table.

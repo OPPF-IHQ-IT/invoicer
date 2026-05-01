@@ -50,6 +50,7 @@ func (c *Client) ListInvoiceableMembers(ctx context.Context, cfg *config.Airtabl
 			LocalLife:        boolField(r, f.LocalLife),
 			BasileusEmeritus: boolField(r, f.BasileusEmeritus),
 			Retired:          boolField(r, f.Retired),
+			Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
 		})
 	}
 	return members, nil
@@ -96,6 +97,7 @@ func (c *Client) ListAllMembers(ctx context.Context, cfg *config.AirtableConfig)
 			LocalLife:        boolField(r, f.LocalLife),
 			BasileusEmeritus: boolField(r, f.BasileusEmeritus),
 			Retired:          boolField(r, f.Retired),
+			Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
 		})
 	}
 	return members, nil

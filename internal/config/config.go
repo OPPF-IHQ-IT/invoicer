@@ -143,6 +143,7 @@ type PollWorkerCreditsFieldsConfig struct {
 
 type AirtableStatusValuesConfig struct {
 	Invoiceable string `yaml:"invoiceable"`
+	Reclaimable string `yaml:"reclaimable"`
 	Invoiced    string `yaml:"invoiced"`
 	Active      string `yaml:"active"`
 }
@@ -206,10 +207,13 @@ func applyDefaults(cfg *Config) {
 		cfg.QBO.ProductionBaseURL = "https://quickbooks.api.intuit.com"
 	}
 	if len(cfg.Airtable.InvoiceableStatuses) == 0 {
-		cfg.Airtable.InvoiceableStatuses = []string{"Invoicable"}
+		cfg.Airtable.InvoiceableStatuses = []string{"Invoicable", "Reclaimable"}
 	}
 	if cfg.Airtable.StatusValues.Invoiceable == "" {
 		cfg.Airtable.StatusValues.Invoiceable = "Invoicable"
+	}
+	if cfg.Airtable.StatusValues.Reclaimable == "" {
+		cfg.Airtable.StatusValues.Reclaimable = "Reclaimable"
 	}
 	if cfg.Airtable.StatusValues.Invoiced == "" {
 		cfg.Airtable.StatusValues.Invoiced = "Invoiced"
