@@ -11,5 +11,5 @@ func main() {
 		kong.Description("Automate fraternity dues invoicing via Airtable and QuickBooks Online."),
 		kong.UsageOnError(),
 	)
-	ctx.FatalIfErrorf(ctx.Run())
+	ctx.FatalIfErrorf(ctx.Run(&cli.Globals{ConfigFile: cli.Root.ConfigFile}))
 }

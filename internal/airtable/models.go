@@ -15,6 +15,7 @@ type Member struct {
 	LocalLife        bool
 	BasileusEmeritus bool
 	Retired          bool
+	RecentMSP        bool // prepaid all levels for 3 years; offset applied on all four components
 	// Reclaimable is true when Status == the configured reclaimable status value.
 	// These members are invoiceable but also owe an International Reinstatement fee.
 	Reclaimable bool

@@ -77,9 +77,17 @@ type QBOItemsConfig struct {
 	DistrictLifeMember       string `yaml:"district_life_membership"`
 	StateLifeMember          string `yaml:"state_life_membership"`
 	LocalLifeMember          string `yaml:"local_life_membership"`
-	BasileusEmeritusOffset   string `yaml:"basileus_emeritus_offset"`
-	PollWorkerCredit         string `yaml:"poll_worker_credit"`
-	InternationalReinstatement string `yaml:"international_reinstatement"`
+	LocalLifeMemberRetiree   string `yaml:"local_life_membership_retiree"`
+	BasileusEmeritusOffset        string  `yaml:"basileus_emeritus_offset"`
+	BasileusEmeritusOffsetRetiree string  `yaml:"basileus_emeritus_offset_retiree"`
+	InternationalMSP           string  `yaml:"international_msp"`
+	DistrictMSP                string  `yaml:"district_msp"`
+	StateMSP                   string  `yaml:"state_msp"`
+	LocalMSP                   string  `yaml:"local_msp"`
+	LocalMSPRetiree            string  `yaml:"local_msp_retiree"`
+	PollWorkerCredit           string  `yaml:"poll_worker_credit"`
+	PollWorkerCreditUnit       float64 `yaml:"poll_worker_credit_unit"` // dollar value of one QBO unit (default $50)
+	InternationalReinstatement string  `yaml:"international_reinstatement"`
 }
 
 type AirtableConfig struct {
@@ -121,7 +129,8 @@ type MembersFieldsConfig struct {
 	StateLife       string `yaml:"state_life"`
 	LocalLife       string `yaml:"local_life"`
 	BasileusEmeritus string `yaml:"basileus_emeritus"`
-	Retired         string `yaml:"retired"`
+	Retired          string `yaml:"retired"`
+	RecentMSP        string `yaml:"recent_msp"`
 }
 
 type DuesScheduleFieldsConfig struct {
@@ -142,10 +151,11 @@ type PollWorkerCreditsFieldsConfig struct {
 }
 
 type AirtableStatusValuesConfig struct {
-	Invoiceable string `yaml:"invoiceable"`
-	Reclaimable string `yaml:"reclaimable"`
-	Invoiced    string `yaml:"invoiced"`
-	Active      string `yaml:"active"`
+	Invoiceable    string `yaml:"invoiceable"`
+	Reclaimable    string `yaml:"reclaimable"`
+	Invoiced       string `yaml:"invoiced"`
+	Active         string `yaml:"active"`
+	NoLongerMember string `yaml:"no_longer_member"`
 }
 
 type InvoiceConfig struct {
@@ -220,6 +230,12 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Airtable.StatusValues.Active == "" {
 		cfg.Airtable.StatusValues.Active = "Active"
+	}
+	if cfg.Airtable.StatusValues.NoLongerMember == "" {
+		cfg.Airtable.StatusValues.NoLongerMember = "No Longer in Chi Tau"
+	}
+	if cfg.QBOItems.PollWorkerCreditUnit == 0 {
+		cfg.QBOItems.PollWorkerCreditUnit = 50.0
 	}
 	if cfg.FiscalYear.StartMonth == 0 {
 		cfg.FiscalYear.StartMonth = 11

@@ -18,7 +18,7 @@ type RunCmd struct {
 	CreateOnly       bool   `help:"Create invoices in QBO without sending them."`
 	Send             bool   `help:"Send previously-created invoices after manual review."`
 	AllowNameFallback bool  `help:"Allow full-name customer matching during run (use with caution)."`
-	Env              string `help:"QBO environment." enum:"sandbox,production" default:""`
+	Env              string `help:"QBO environment override." enum:",sandbox,production" default:""`
 }
 
 func (r *RunCmd) Validate() error {

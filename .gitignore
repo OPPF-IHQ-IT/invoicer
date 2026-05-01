@@ -38,3 +38,13 @@ config.yaml
 
 # GoReleaser dist
 dist/
+
+# Built binaries
+/invoicer
+cmd/invoicer/invoicer
+
+# Reconciliation output CSVs
+*.csv
+
+# macOS metadata
+.DS_Store

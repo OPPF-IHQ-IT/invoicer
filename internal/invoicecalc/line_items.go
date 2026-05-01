@@ -10,17 +10,27 @@ type lineItem struct {
 	ItemID      string
 	Description string
 	Amount      float64 // negative for credits
+	Qty         float64 // 0 means default (1)
+	UnitPrice   float64 // 0 means default (Amount)
 }
 
 func (l lineItem) toQBOLine() qbo.InvoiceLine {
+	qty := l.Qty
+	if qty == 0 {
+		qty = 1
+	}
+	unitPrice := l.UnitPrice
+	if unitPrice == 0 {
+		unitPrice = l.Amount
+	}
 	return qbo.InvoiceLine{
 		Amount:      l.Amount,
 		DetailType:  "SalesItemLineDetail",
 		Description: l.Description,
 		SalesItemLineDetail: &qbo.SalesItemLineDetail{
 			ItemRef:   qbo.ItemRef{Value: l.ItemID},
-			Qty:       1,
-			UnitPrice: l.Amount,
+			Qty:       qty,
+			UnitPrice: unitPrice,
 		},
 	}
 }
@@ -36,11 +46,17 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		return nil, SkipReasonDuesScheduleMissing
 	}
 	lines = append(lines, lineItem{ItemID: items.International, Description: "International Dues", Amount: intl.Amount})
-	if input.Member.IntlLife {
+	switch {
+	case input.Member.IntlLife:
 		if items.InternationalLifeMember == "" {
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.InternationalLifeMember, Description: "International Life Membership", Amount: -intl.Amount})
+	case input.Member.RecentMSP:
+		if items.InternationalMSP == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		lines = append(lines, lineItem{ItemID: items.InternationalMSP, Description: "Recent MSP (International)", Amount: -intl.Amount})
 	}
 
 	// District
@@ -49,11 +65,17 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		return nil, SkipReasonDuesScheduleMissing
 	}
 	lines = append(lines, lineItem{ItemID: items.District, Description: "District Dues", Amount: dist.Amount})
-	if input.Member.DistrictLife {
+	switch {
+	case input.Member.DistrictLife:
 		if items.DistrictLifeMember == "" {
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.DistrictLifeMember, Description: "District Life Membership", Amount: -dist.Amount})
+	case input.Member.RecentMSP:
+		if items.DistrictMSP == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		lines = append(lines, lineItem{ItemID: items.DistrictMSP, Description: "Recent MSP (District)", Amount: -dist.Amount})
 	}
 
 	// State
@@ -62,11 +84,17 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		return nil, SkipReasonDuesScheduleMissing
 	}
 	lines = append(lines, lineItem{ItemID: items.State, Description: "State Dues", Amount: state.Amount})
-	if input.Member.StateLife {
+	switch {
+	case input.Member.StateLife:
 		if items.StateLifeMember == "" {
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.StateLifeMember, Description: "State Life Membership", Amount: -state.Amount})
+	case input.Member.RecentMSP:
+		if items.StateMSP == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		lines = append(lines, lineItem{ItemID: items.StateMSP, Description: "Recent MSP (State)", Amount: -state.Amount})
 	}
 
 	// Local — priority: BE > LocalLife > Retired > Standard
@@ -100,6 +128,19 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 func buildLocalLines(input CalculationInput, schedule scheduleMap, items config.QBOItemsConfig) ([]lineItem, SkipReason) {
 	switch {
 	case input.Member.BasileusEmeritus:
+		if input.Member.Retired {
+			retiree, ok := schedule.resolve("Local (Retiree)")
+			if !ok {
+				return nil, SkipReasonDuesScheduleMissing
+			}
+			if items.BasileusEmeritusOffsetRetiree == "" {
+				return nil, SkipReasonQBOItemMappingMissing
+			}
+			return []lineItem{
+				{ItemID: items.LocalRetiree, Description: "Local Dues (Retiree)", Amount: retiree.Amount},
+				{ItemID: items.BasileusEmeritusOffsetRetiree, Description: "Basileus Emeritus (Retiree)", Amount: -retiree.Amount},
+			}, SkipReasonNone
+		}
 		local, ok := schedule.resolve("Local")
 		if !ok {
 			return nil, SkipReasonDuesScheduleMissing
@@ -113,6 +154,19 @@ func buildLocalLines(input CalculationInput, schedule scheduleMap, items config.
 		}, SkipReasonNone
 
 	case input.Member.LocalLife:
+		if input.Member.Retired {
+			retiree, ok := schedule.resolve("Local (Retiree)")
+			if !ok {
+				return nil, SkipReasonDuesScheduleMissing
+			}
+			if items.LocalLifeMemberRetiree == "" {
+				return nil, SkipReasonQBOItemMappingMissing
+			}
+			return []lineItem{
+				{ItemID: items.LocalRetiree, Description: "Local Dues (Retiree)", Amount: retiree.Amount},
+				{ItemID: items.LocalLifeMemberRetiree, Description: "Local Life Membership (Retiree)", Amount: -retiree.Amount},
+			}, SkipReasonNone
+		}
 		local, ok := schedule.resolve("Local")
 		if !ok {
 			return nil, SkipReasonDuesScheduleMissing
@@ -125,21 +179,41 @@ func buildLocalLines(input CalculationInput, schedule scheduleMap, items config.
 			{ItemID: items.LocalLifeMember, Description: "Local Life Membership", Amount: -local.Amount},
 		}, SkipReasonNone
 
+	case input.Member.RecentMSP:
+		if input.Member.Retired {
+			retiree, ok := schedule.resolve("Local (Retiree)")
+			if !ok {
+				return nil, SkipReasonDuesScheduleMissing
+			}
+			if items.LocalMSPRetiree == "" {
+				return nil, SkipReasonQBOItemMappingMissing
+			}
+			return []lineItem{
+				{ItemID: items.LocalRetiree, Description: "Local Dues (Retiree)", Amount: retiree.Amount},
+				{ItemID: items.LocalMSPRetiree, Description: "Recent MSP (Local, Retiree)", Amount: -retiree.Amount},
+			}, SkipReasonNone
+		}
+		local, ok := schedule.resolve("Local")
+		if !ok {
+			return nil, SkipReasonDuesScheduleMissing
+		}
+		if items.LocalMSP == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		return []lineItem{
+			{ItemID: items.Local, Description: "Local Dues", Amount: local.Amount},
+			{ItemID: items.LocalMSP, Description: "Recent MSP (Local)", Amount: -local.Amount},
+		}, SkipReasonNone
+
 	case input.Member.Retired:
 		retiree, ok := schedule.resolve("Local (Retiree)")
 		if !ok {
 			return nil, SkipReasonDuesScheduleMissing
 		}
-		// Apply poll worker credits against retiree rate, floor at $0.
-		amount := retiree.Amount - input.PollWorkerCredit
-		if amount < 0 {
-			amount = 0
-		}
 		lines := []lineItem{{ItemID: items.LocalRetiree, Description: "Local Dues (Retiree)", Amount: retiree.Amount}}
 		if input.PollWorkerCredit > 0 {
-			lines = append(lines, lineItem{ItemID: items.PollWorkerCredit, Description: "Poll Worker Credit", Amount: -min(input.PollWorkerCredit, retiree.Amount)})
+			lines = append(lines, pollWorkerCreditLine(items, input.PollWorkerCredit, retiree.Amount))
 		}
-		_ = amount
 		return lines, SkipReasonNone
 
 	default:
@@ -149,10 +223,27 @@ func buildLocalLines(input CalculationInput, schedule scheduleMap, items config.
 		}
 		lines := []lineItem{{ItemID: items.Local, Description: "Local Dues", Amount: local.Amount}}
 		if input.PollWorkerCredit > 0 {
-			credit := min(input.PollWorkerCredit, local.Amount)
-			lines = append(lines, lineItem{ItemID: items.PollWorkerCredit, Description: "Poll Worker Credit", Amount: -credit})
+			lines = append(lines, pollWorkerCreditLine(items, input.PollWorkerCredit, local.Amount))
 		}
 		return lines, SkipReasonNone
+	}
+}
+
+// pollWorkerCreditLine builds the poll worker credit line item with fractional qty.
+// The QBO product has a fixed unit price (default $50); qty = credit_applied / unit_price.
+func pollWorkerCreditLine(items config.QBOItemsConfig, credit, localAmount float64) lineItem {
+	unitPrice := items.PollWorkerCreditUnit
+	if unitPrice <= 0 {
+		unitPrice = 50.0
+	}
+	applied := min(credit, localAmount)
+	qty := applied / unitPrice
+	return lineItem{
+		ItemID:      items.PollWorkerCredit,
+		Description: "Poll Worker Credit",
+		Amount:      -applied,
+		Qty:         qty,
+		UnitPrice:   -unitPrice,
 	}
 }
 

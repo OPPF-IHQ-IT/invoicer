@@ -9,16 +9,19 @@ import (
 )
 
 type AuthCmd struct {
-	Env string `help:"QBO environment to authenticate against." enum:"sandbox,production" default:"sandbox"`
+	Login  AuthLoginCmd `cmd:"" help:"Authenticate with QuickBooks Online." default:"withargs"`
+	Status StatusCmd    `cmd:"" help:"Show current authentication status."`
+	Logout LogoutCmd    `cmd:"" help:"Remove stored QBO credentials."`
+}
 
-	Status StatusCmd `cmd:"" help:"Show current authentication status."`
-	Logout LogoutCmd `cmd:"" help:"Remove stored QBO credentials."`
+type AuthLoginCmd struct {
+	Env string `help:"QBO environment to authenticate against." enum:"sandbox,production" default:"sandbox"`
 }
 
 type StatusCmd struct{}
 type LogoutCmd struct{}
 
-func (a *AuthCmd) Run(globals *Globals) error {
+func (a *AuthLoginCmd) Run(globals *Globals) error {
 	cfg, err := config.Load(globals.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)

@@ -151,9 +151,11 @@ All Airtable table names, field names, and QBO item IDs are configurable so any 
 
 ---
 
-## Transferring this repo
+## Support
 
-This repo may be transferred to the IHQ IT organization in the future. The import path and install instructions will update accordingly.
+If `invoicer` saves you time and you'd like to show some love, consider supporting the author:
+
+[![Support on Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon)](https://www.patreon.com/wmadisondev)
 
 ---
 

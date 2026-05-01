@@ -13,13 +13,13 @@ type CustomersCmd struct {
 }
 
 type ReconcileCmd struct {
-	File          string `short:"f" help:"Path to QBO customers CSV export." required:"" type:"path"`
-	DryRun        bool   `help:"Preview matches without updating Airtable." default:"true" negatable:""`
-	UpdateAirtable bool  `help:"Write matched QBO Customer IDs back to Airtable."`
-	Overwrite     bool   `help:"Overwrite existing QBO Customer ID values in Airtable."`
-	AmbiguousOut  string `help:"Write ambiguous matches to this CSV file." type:"path"`
-	MatchedOut    string `help:"Write matched records to this CSV file." type:"path"`
-	UnmatchedOut  string `help:"Write unmatched records to this CSV file." type:"path"`
+	DryRun         bool   `help:"Preview matches without updating Airtable." default:"true" negatable:""`
+	UpdateAirtable bool   `help:"Write matched QBO Customer IDs back to Airtable."`
+	Overwrite      bool   `help:"Overwrite existing QBO Customer ID values in Airtable."`
+	AmbiguousOut   string `help:"Write ambiguous matches to this CSV file." type:"path"`
+	MatchedOut     string `help:"Write matched records to this CSV file." type:"path"`
+	UnmatchedOut   string `help:"Write unmatched records to this CSV file." type:"path"`
+	SkippedOut     string `help:"Write skipped records (e.g. missing email) to this CSV file." type:"path"`
 }
 
 func (r *ReconcileCmd) Run(globals *Globals) error {
@@ -29,13 +29,13 @@ func (r *ReconcileCmd) Run(globals *Globals) error {
 	}
 
 	opts := reconcile.Options{
-		QBOCustomersFile: r.File,
-		DryRun:           r.DryRun,
-		UpdateAirtable:   r.UpdateAirtable,
-		Overwrite:        r.Overwrite,
-		AmbiguousOut:     r.AmbiguousOut,
-		MatchedOut:       r.MatchedOut,
-		UnmatchedOut:     r.UnmatchedOut,
+		DryRun:         r.DryRun,
+		UpdateAirtable: r.UpdateAirtable,
+		Overwrite:      r.Overwrite,
+		AmbiguousOut:   r.AmbiguousOut,
+		MatchedOut:     r.MatchedOut,
+		UnmatchedOut:   r.UnmatchedOut,
+		SkippedOut:     r.SkippedOut,
 	}
 
 	return reconcile.Customers(context.Background(), cfg, opts)

@@ -9,34 +9,31 @@ import (
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
+	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
 
 // Options controls the reconciliation run.
 type Options struct {
-	QBOCustomersFile string
-	DryRun           bool
-	UpdateAirtable   bool
-	Overwrite        bool
-	AmbiguousOut     string
-	MatchedOut       string
-	UnmatchedOut     string
-}
-
-type qboCustomerRow struct {
-	ID          string
-	DisplayName string
-	Email       string
+	DryRun         bool
+	UpdateAirtable bool
+	Overwrite      bool
+	AmbiguousOut   string
+	MatchedOut     string
+	UnmatchedOut   string
+	SkippedOut     string
 }
 
 type matchResult struct {
 	Member      airtable.Member
-	QBOCustomer *qboCustomerRow
-	MatchedBy   string // "existing_id", "email", "name"
+	QBOCustomer *qbo.Customer
+	MatchedBy   string // "control_number", "email"
 	Ambiguous   bool
 	Unmatched   bool
+	NoEmail     bool
+	NoLongerMember bool
 }
 
-// Customers reconciles the QBO CSV export against Airtable members.
+// Customers reconciles QBO customers (fetched via API) against Airtable members.
 func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 	atClient := airtable.NewClient(cfg.Airtable.APIKey, cfg.Airtable.BaseID)
 
@@ -45,52 +42,66 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 		return fmt.Errorf("loading Airtable members: %w", err)
 	}
 
-	qboCustomers, err := loadQBOCustomersCSV(opts.QBOCustomersFile)
+	qboClient, err := qbo.NewClient(cfg)
 	if err != nil {
-		return fmt.Errorf("loading QBO customers CSV: %w", err)
+		return fmt.Errorf("connecting to QBO: %w", err)
 	}
 
-	byEmail := make(map[string][]*qboCustomerRow)
-	byName := make(map[string][]*qboCustomerRow)
-	for i := range qboCustomers {
-		c := &qboCustomers[i]
+	customers, err := qboClient.ListCustomers(ctx)
+	if err != nil {
+		return fmt.Errorf("loading QBO customers: %w", err)
+	}
+
+	// Index customers by normalised email and by normalised Notes (control #).
+	byEmail := make(map[string][]*qbo.Customer)
+	byControlNumber := make(map[string][]*qbo.Customer)
+	for i := range customers {
+		c := &customers[i]
 		if c.Email != "" {
-			key := strings.ToLower(strings.TrimSpace(c.Email))
-			byEmail[key] = append(byEmail[key], c)
+			byEmail[normalise(c.Email)] = append(byEmail[normalise(c.Email)], c)
 		}
-		key := normalizeName(c.DisplayName)
-		byName[key] = append(byName[key], c)
+		if c.Notes != "" {
+			byControlNumber[normalise(c.Notes)] = append(byControlNumber[normalise(c.Notes)], c)
+		}
 	}
 
 	var results []matchResult
 	stats := struct {
-		total, existingID, byEmail, byName, ambiguous, unmatched, skipped int
+		total, skipped, noLongerMember, byControlNumber, byEmail, ambiguous, unmatched, noEmail int
 	}{total: len(members)}
 
 	for _, m := range members {
-		// Skip members who already have a QBO Customer ID unless overwrite is set.
+		if m.Status == cfg.Airtable.StatusValues.NoLongerMember {
+			stats.noLongerMember++
+			results = append(results, matchResult{Member: m, NoLongerMember: true})
+			continue
+		}
+
 		if m.QBOCustomerID != "" && !opts.Overwrite {
 			stats.skipped++
 			continue
 		}
 
-		result := matchResult{Member: m}
-
-		if m.QBOCustomerID != "" {
-			stats.existingID++
+		if m.Email == "" {
+			stats.noEmail++
+			results = append(results, matchResult{Member: m, NoEmail: true})
 			continue
 		}
 
-		emailKey := strings.ToLower(strings.TrimSpace(m.Email))
-		if emailKey != "" {
-			matches := byEmail[emailKey]
+		result := matchResult{Member: m}
+
+		// Match by control number stored in QBO Notes field.
+		if m.ControlNumber != "" {
+			matches := byControlNumber[normalise(m.ControlNumber)]
 			switch len(matches) {
 			case 1:
 				result.QBOCustomer = matches[0]
-				result.MatchedBy = "email"
-				stats.byEmail++
+				result.MatchedBy = "control_number"
+				stats.byControlNumber++
+				results = append(results, result)
+				continue
 			case 0:
-				// fall through to name matching
+				// fall through to email matching
 			default:
 				result.Ambiguous = true
 				stats.ambiguous++
@@ -99,35 +110,28 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 			}
 		}
 
-		if result.QBOCustomer == nil {
-			nameKey := normalizeName(m.ControlNumber) // prefer control # key
-			_ = nameKey
-			// Try display name match as fallback.
-			nameKey = normalizeName(m.Email) // placeholder — real name from Members table
-			matches := byName[nameKey]
-			switch len(matches) {
-			case 1:
-				result.QBOCustomer = matches[0]
-				result.MatchedBy = "name"
-				stats.byName++
-			case 0:
-				result.Unmatched = true
-				stats.unmatched++
-			default:
-				result.Ambiguous = true
-				stats.ambiguous++
-			}
+		// Match by email.
+		matches := byEmail[normalise(m.Email)]
+		switch len(matches) {
+		case 1:
+			result.QBOCustomer = matches[0]
+			result.MatchedBy = "email"
+			stats.byEmail++
+		case 0:
+			result.Unmatched = true
+			stats.unmatched++
+		default:
+			result.Ambiguous = true
+			stats.ambiguous++
 		}
 
 		results = append(results, result)
 	}
 
-	// Write output CSV files.
 	if err := writeResults(results, opts); err != nil {
 		return err
 	}
 
-	// Update Airtable if requested and not dry-run.
 	if opts.UpdateAirtable && !opts.DryRun {
 		for _, r := range results {
 			if r.Ambiguous || r.Unmatched || r.QBOCustomer == nil {
@@ -143,85 +147,32 @@ func Customers(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 
 	fmt.Printf("Reconciliation summary:\n")
-	fmt.Printf("  Total Airtable members scanned:     %d\n", stats.total)
-	fmt.Printf("  Total QBO customers loaded:          %d\n", len(qboCustomers))
+	fmt.Printf("  Total Airtable members scanned:        %d\n", stats.total)
+	fmt.Printf("  Total QBO customers loaded:            %d\n", len(customers))
+	fmt.Printf("  No longer a member of this chapter:    %d\n", stats.noLongerMember)
 	fmt.Printf("  Already had QBO Customer ID (skipped): %d\n", stats.skipped)
-	fmt.Printf("  Matched by existing QBO Customer ID: %d\n", stats.existingID)
-	fmt.Printf("  Matched by email:                    %d\n", stats.byEmail)
-	fmt.Printf("  Matched by name:                     %d\n", stats.byName)
-	fmt.Printf("  Ambiguous:                           %d\n", stats.ambiguous)
-	fmt.Printf("  Unmatched:                           %d\n", stats.unmatched)
+	fmt.Printf("  Skipped — no email address:            %d\n", stats.noEmail)
+	fmt.Printf("  Matched by control number:             %d\n", stats.byControlNumber)
+	fmt.Printf("  Matched by email:                      %d\n", stats.byEmail)
+	fmt.Printf("  Ambiguous:                             %d\n", stats.ambiguous)
+	fmt.Printf("  Unmatched:                             %d\n", stats.unmatched)
 	if opts.DryRun {
 		fmt.Println("\nDry run — no Airtable changes made.")
 	}
 	return nil
 }
 
-func loadQBOCustomersCSV(path string) ([]qboCustomerRow, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	r := csv.NewReader(f)
-	records, err := r.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-	if len(records) < 2 {
-		return nil, fmt.Errorf("CSV file has no data rows")
-	}
-
-	// Build header index.
-	header := make(map[string]int)
-	for i, h := range records[0] {
-		header[strings.TrimSpace(h)] = i
-	}
-
-	idCol := findCol(header, "Id", "CustomerID", "Customer ID")
-	nameCol := findCol(header, "Display Name", "DisplayName", "Name")
-	emailCol := findCol(header, "Email", "Primary Email")
-
-	var customers []qboCustomerRow
-	for _, row := range records[1:] {
-		c := qboCustomerRow{}
-		if idCol >= 0 && idCol < len(row) {
-			c.ID = strings.TrimSpace(row[idCol])
-		}
-		if nameCol >= 0 && nameCol < len(row) {
-			c.DisplayName = strings.TrimSpace(row[nameCol])
-		}
-		if emailCol >= 0 && emailCol < len(row) {
-			c.Email = strings.TrimSpace(row[emailCol])
-		}
-		if c.ID != "" {
-			customers = append(customers, c)
-		}
-	}
-	return customers, nil
-}
-
-func findCol(header map[string]int, candidates ...string) int {
-	for _, c := range candidates {
-		if i, ok := header[c]; ok {
-			return i
-		}
-	}
-	return -1
-}
-
-func normalizeName(s string) string {
-	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(s)), " "))
+func normalise(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
 }
 
 func writeResults(results []matchResult, opts Options) error {
 	if opts.MatchedOut != "" {
 		var rows [][]string
-		rows = append(rows, []string{"control_number", "email", "qbo_customer_id", "matched_by"})
+		rows = append(rows, []string{"control_number", "status", "email", "qbo_customer_id", "qbo_display_name", "matched_by"})
 		for _, r := range results {
 			if !r.Ambiguous && !r.Unmatched && r.QBOCustomer != nil {
-				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Email, r.QBOCustomer.ID, r.MatchedBy})
+				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Status, r.Member.Email, r.QBOCustomer.ID, r.QBOCustomer.DisplayName, r.MatchedBy})
 			}
 		}
 		if err := writeCSV(opts.MatchedOut, rows); err != nil {
@@ -231,10 +182,10 @@ func writeResults(results []matchResult, opts Options) error {
 
 	if opts.AmbiguousOut != "" {
 		var rows [][]string
-		rows = append(rows, []string{"control_number", "email"})
+		rows = append(rows, []string{"control_number", "status", "email"})
 		for _, r := range results {
 			if r.Ambiguous {
-				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Email})
+				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Status, r.Member.Email})
 			}
 		}
 		if err := writeCSV(opts.AmbiguousOut, rows); err != nil {
@@ -244,13 +195,29 @@ func writeResults(results []matchResult, opts Options) error {
 
 	if opts.UnmatchedOut != "" {
 		var rows [][]string
-		rows = append(rows, []string{"control_number", "email"})
+		rows = append(rows, []string{"control_number", "status", "email"})
 		for _, r := range results {
 			if r.Unmatched {
-				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Email})
+				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Status, r.Member.Email})
 			}
 		}
 		if err := writeCSV(opts.UnmatchedOut, rows); err != nil {
+			return err
+		}
+	}
+
+	if opts.SkippedOut != "" {
+		var rows [][]string
+		rows = append(rows, []string{"control_number", "status", "reason"})
+		for _, r := range results {
+			switch {
+			case r.NoLongerMember:
+				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Status, "no longer a member of this chapter"})
+			case r.NoEmail:
+				rows = append(rows, []string{r.Member.ControlNumber, r.Member.Status, "no email address"})
+			}
+		}
+		if err := writeCSV(opts.SkippedOut, rows); err != nil {
 			return err
 		}
 	}

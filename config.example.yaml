@@ -36,9 +36,17 @@ qbo_items:
   international_life_membership: "" # QBO Item ID for International Life Membership offset
   district_life_membership: ""      # QBO Item ID for District Life Membership offset
   state_life_membership: ""         # QBO Item ID for State Life Membership offset
-  local_life_membership: ""         # QBO Item ID for local life membership offset (e.g. "Chi Tau Life Membership")
-  basileus_emeritus_offset: ""      # QBO Item ID for Basileus Emeritus local dues offset
+  local_life_membership: ""         # QBO Item ID for local life membership offset (non-retiree)
+  local_life_membership_retiree: "" # QBO Item ID for local life membership offset (retiree tier)
+  basileus_emeritus_offset: ""         # QBO Item ID for Basileus Emeritus local dues offset (non-retiree)
+  basileus_emeritus_offset_retiree: "" # QBO Item ID for Basileus Emeritus local dues offset (retiree tier)
+  international_msp: ""               # QBO Item ID for Recent MSP International dues offset
+  district_msp: ""                    # QBO Item ID for Recent MSP District dues offset
+  state_msp: ""                       # QBO Item ID for Recent MSP State dues offset
+  local_msp: ""                       # QBO Item ID for Recent MSP Local dues offset (non-retiree)
+  local_msp_retiree: ""              # QBO Item ID for Recent MSP Local dues offset (retiree tier)
   poll_worker_credit: ""            # QBO Item ID for Poll Worker Dues Credit
+  poll_worker_credit_unit: 50       # Dollar value of one QBO unit for poll worker credit product
   international_reinstatement: ""   # QBO Item ID for International Reinstatement
 
 airtable:
@@ -67,6 +75,7 @@ airtable:
     reclaimable: "Reclaimable"
     invoiced: "Invoiced"
     active: "Active"
+    no_longer_member: "No Longer in Chi Tau"
 
   fields:
     members:
@@ -80,6 +89,7 @@ airtable:
       local_life: "Chi Tau Life?"        # rename to match your chapter's local life membership field
       basileus_emeritus: "Basileus Emeritus?"
       retired: "Retired?"
+      recent_msp: "Recent MSP?"
 
     dues_schedule:
       id: "ID"

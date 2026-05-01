@@ -17,7 +17,7 @@ type PreviewCmd struct {
 	Send       bool   `help:"Preview which invoices would be sent."`
 	Format     string `help:"Output format." enum:"table,json" default:"table"`
 	Out        string `help:"Write report to this file path." type:"path"`
-	Env        string `help:"QBO environment." enum:"sandbox,production" default:""`
+	Env        string `help:"QBO environment override." enum:",sandbox,production" default:""`
 }
 
 func (p *PreviewCmd) Run(globals *Globals) error {
