@@ -31,6 +31,20 @@ archives:
       - LICENSE
       - README.md
 
+brews:
+  - name: invoicer
+    repository:
+      owner: OPPF-IHQ-IT
+      name: homebrew-invoicer
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/OPPF-IHQ-IT/invoicer"
+    description: "Automate fraternity dues invoicing via Airtable and QuickBooks Online."
+    license: "MIT"
+    install: |
+      bin.install "invoicer"
+    test: |
+      system "#{bin}/invoicer", "--help"
+
 checksum:
   name_template: "checksums.txt"
 

@@ -5,6 +5,7 @@ import "github.com/OPPF-IHQ-IT/invoicer/internal/config"
 var Root struct {
 	ConfigFile string `short:"c" help:"Path to config file." default:"~/.config/invoicer/config.yaml" type:"path"`
 
+	Setup     SetupCmd     `cmd:"" help:"Interactive setup wizard — create your config file."`
 	Auth      AuthCmd      `cmd:"" help:"Authenticate with QuickBooks Online."`
 	Preview   PreviewCmd   `cmd:"" help:"Preview what invoicer would create, send, or skip."`
 	Run       RunCmd       `cmd:"" help:"Execute invoice creation or sending."`
