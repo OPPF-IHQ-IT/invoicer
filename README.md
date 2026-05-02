@@ -111,8 +111,8 @@ invoicer setup items
 Authenticate with QuickBooks Online via OAuth. Opens your browser and saves a token to `~/.config/invoicer/qbo-token.json`.
 
 ```bash
-invoicer auth login --env production   # production (default)
-invoicer auth login --env sandbox      # sandbox / testing
+invoicer auth login                    # sandbox (default)
+invoicer auth login --env production   # production
 ```
 
 #### `invoicer auth status`
@@ -155,9 +155,12 @@ invoicer customers reconcile --update-airtable --no-dry-run \
 
 # Re-run and overwrite already-mapped members
 invoicer customers reconcile --update-airtable --no-dry-run --overwrite
+
+# Auto-create QBO customer records for unmatched members who have an email address
+invoicer customers reconcile --update-airtable --no-dry-run --create-missing
 ```
 
-Members in the **ambiguous** file have multiple possible QBO matches and need manual resolution. Members in **unmatched** have no QBO customer record and may need one created. Members in **skipped** were excluded (no email address, or marked "No Longer in Chi Tau").
+Members in the **ambiguous** file have multiple possible QBO matches and need manual resolution. Members in **unmatched** have no QBO customer record — use `--create-missing` to create them automatically. Members in **skipped** were excluded (no email address, or marked "No Longer in Chi Tau").
 
 ---
 
@@ -230,7 +233,9 @@ invoicer qbo doctor
 
 ### `invoicer airtable`
 
-Airtable diagnostics. Run `invoicer airtable --help` for available subcommands.
+#### `invoicer airtable doctor`
+
+Check Airtable connectivity and schema (coming soon).
 
 ---
 
