@@ -48,6 +48,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 			PrivateNote:  privateNote,
 			CustomerMemo: cfg.Invoice.CustomerMemo,
 			BillEmail:    mp.QBOCustomer.Email,
+			SalesTermID:  cfg.Invoice.SalesTermID,
 			Line:         mp.CalcResult.Lines,
 		})
 		if err != nil {

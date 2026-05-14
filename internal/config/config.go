@@ -169,6 +169,9 @@ type InvoiceConfig struct {
 	CreateMissingCustomers       bool   `yaml:"create_missing_customers"`
 	DefaultRunModeRequiresExplicit bool  `yaml:"default_run_mode_requires_explicit_action"`
 	CustomerMemo                 string `yaml:"customer_memo"`
+	// SalesTermID is the QBO Term entity ID (e.g. "Due on Receipt") stamped on
+	// every created invoice. Find it via Settings → All lists → Terms in QBO.
+	SalesTermID                  string `yaml:"sales_term_id"`
 }
 
 // Load reads and parses the config file, expanding environment variables.

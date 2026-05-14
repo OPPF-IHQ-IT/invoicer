@@ -444,6 +444,9 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 	if req.BillEmail != "" {
 		payload["BillEmail"] = map[string]interface{}{"Address": req.BillEmail}
 	}
+	if req.SalesTermID != "" {
+		payload["SalesTermRef"] = map[string]interface{}{"value": req.SalesTermID}
+	}
 	return payload
 }
 

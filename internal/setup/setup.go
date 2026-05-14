@@ -118,6 +118,11 @@ invoice:
   allow_name_fallback_in_run: false
   create_missing_customers: false
   default_run_mode_requires_explicit_action: true
+  customer_memo: ""
+  # QBO Term entity ID stamped on every invoice (e.g. "Due on Receipt"). Find it
+  # in QBO under Settings → All lists → Terms; the ID is in the URL when
+  # editing the term. Leave blank to omit the Terms reference.
+  sales_term_id: ""
 `
 
 type configValues struct {

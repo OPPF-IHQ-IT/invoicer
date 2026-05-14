@@ -117,3 +117,8 @@ invoice:
   create_missing_customers: false
   default_run_mode_requires_explicit_action: true
   customer_memo: ""  # Message displayed on invoice/sales receipt to the member
+  # QBO Term entity ID stamped on every created invoice (populates the "Terms"
+  # dropdown, e.g. "Due on Receipt"). Find it in QBO under Settings → All lists
+  # → Terms; the ID appears in the URL when editing the term. Leave blank to
+  # send no Terms reference.
+  sales_term_id: ""

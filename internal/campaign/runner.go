@@ -126,6 +126,7 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 			PrivateNote:  privateNote,
 			CustomerMemo: memo,
 			BillEmail:    customerEmail,
+			SalesTermID:  cfg.Invoice.SalesTermID,
 			Line: []qbo.InvoiceLine{
 				{
 					Amount:      m.Amount,
