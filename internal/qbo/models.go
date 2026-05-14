@@ -64,5 +64,6 @@ type InvoiceCreateRequest struct {
 	DueDate      string
 	PrivateNote  string
 	CustomerMemo string
+	BillEmail    string // populates Invoice.BillEmail; required for /send to deliver without sendTo
 	Line         []InvoiceLine
 }

@@ -61,6 +61,20 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 		description = "Campaign contribution"
 	}
 
+	customers, err := qboClient.ListCustomers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("loading QBO customers: %w", err)
+	}
+	customerByID := make(map[string]*qbo.Customer, len(customers))
+	for i := range customers {
+		customerByID[customers[i].ID] = &customers[i]
+	}
+
+	nextDocNumber, err := qboClient.NextInvoiceNumber(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetching next invoice number: %w", err)
+	}
+
 	result := &RunResult{RunID: runID}
 
 	for _, m := range matched {
@@ -73,7 +87,13 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 		}
 
 		customerID := m.Member.QBOCustomerID
-		customerEmail := m.Member.Email
+		customerEmail := ""
+		if cust, ok := customerByID[customerID]; ok {
+			customerEmail = cust.Email
+		}
+		if customerEmail == "" {
+			customerEmail = m.Member.Email
+		}
 
 		if m.NeedsQBOCreate {
 			cust, err := qboClient.CreateCustomer(ctx, m.CreationName, m.CreationEmail, m.Member.ControlNumber)
@@ -100,10 +120,12 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 
 		inv, err := qboClient.CreateInvoice(ctx, qbo.InvoiceCreateRequest{
 			CustomerRef:  qbo.CustomerRef{Value: customerID},
+			DocNumber:    nextDocNumber,
 			TxnDate:      txnDate,
 			DueDate:      txnDate, // due on receipt
 			PrivateNote:  privateNote,
 			CustomerMemo: memo,
+			BillEmail:    customerEmail,
 			Line: []qbo.InvoiceLine{
 				{
 					Amount:      m.Amount,
@@ -126,6 +148,7 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 		}
 		out.InvoiceID = inv.ID
 		out.DocNumber = inv.DocNumber
+		nextDocNumber = qbo.IncrementDocNumber(nextDocNumber)
 
 		if customerEmail == "" {
 			out.Status = "created_not_sent"
