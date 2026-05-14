@@ -60,14 +60,14 @@ func (c *Client) ListInvoiceableMembers(ctx context.Context, cfg *config.Airtabl
 
 // UpdateMemberStatus sets the Status field on a member record.
 func (c *Client) UpdateMemberStatus(ctx context.Context, cfg *config.AirtableConfig, recordID, status string) error {
-	return c.patchRecord(ctx, cfg.Tables.Members, recordID, map[string]interface{}{
+	return c.patchRecord(ctx, cfg.Tables.Members, recordID, map[string]any{
 		cfg.Fields.Members.Status: status,
 	})
 }
 
 // UpdateMemberQBOCustomerID sets the QBO Customer ID field on a member record.
 func (c *Client) UpdateMemberQBOCustomerID(ctx context.Context, cfg *config.AirtableConfig, recordID, customerID string) error {
-	return c.patchRecord(ctx, cfg.Tables.Members, recordID, map[string]interface{}{
+	return c.patchRecord(ctx, cfg.Tables.Members, recordID, map[string]any{
 		cfg.Fields.Members.QBOCustomerID: customerID,
 	})
 }

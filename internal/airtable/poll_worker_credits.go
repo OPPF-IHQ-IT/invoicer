@@ -71,7 +71,7 @@ func (c *Client) ConsumePollWorkerCredits(ctx context.Context, cfg *config.Airta
 			continue
 		}
 		newSpent := credit.CreditsSpent + amounts[i]
-		if err := c.patchRecord(ctx, cfg.Tables.PollWorkerCreditUtilization, credit.RecordID, map[string]interface{}{
+		if err := c.patchRecord(ctx, cfg.Tables.PollWorkerCreditUtilization, credit.RecordID, map[string]any{
 			f.CreditsSpent: newSpent,
 		}); err != nil {
 			return err
@@ -86,7 +86,7 @@ func linkedRecordIDs(r record, key string) []string {
 	if !ok {
 		return nil
 	}
-	arr, ok := v.([]interface{})
+	arr, ok := v.([]any)
 	if !ok {
 		return nil
 	}

@@ -53,7 +53,7 @@ func (c *Client) query(ctx context.Context, q string) ([]byte, error) {
 	return c.do(req)
 }
 
-func (c *Client) post(ctx context.Context, entity string, payload interface{}) ([]byte, error) {
+func (c *Client) post(ctx context.Context, entity string, payload any) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (c *Client) NextInvoiceNumber(ctx context.Context) (string, error) {
 
 	var result struct {
 		QueryResponse struct {
-			Invoice []map[string]interface{} `json:"Invoice"`
+			Invoice []map[string]any `json:"Invoice"`
 		} `json:"QueryResponse"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -183,7 +183,7 @@ func (c *Client) ListItems(ctx context.Context) ([]Item, error) {
 
 	var result struct {
 		QueryResponse struct {
-			Item []map[string]interface{} `json:"Item"`
+			Item []map[string]any `json:"Item"`
 		} `json:"QueryResponse"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -205,12 +205,12 @@ func (c *Client) ListItems(ctx context.Context) ([]Item, error) {
 
 // CreateCustomer creates a new QBO customer record.
 func (c *Client) CreateCustomer(ctx context.Context, displayName, email, notes string) (*Customer, error) {
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"DisplayName": displayName,
 		"Notes":       notes,
 	}
 	if email != "" {
-		payload["PrimaryEmailAddr"] = map[string]interface{}{"Address": email}
+		payload["PrimaryEmailAddr"] = map[string]any{"Address": email}
 	}
 
 	body, err := c.post(ctx, "customer", payload)
@@ -219,7 +219,7 @@ func (c *Client) CreateCustomer(ctx context.Context, displayName, email, notes s
 	}
 
 	var result struct {
-		Customer map[string]interface{} `json:"Customer"`
+		Customer map[string]any `json:"Customer"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
@@ -238,7 +238,7 @@ func (c *Client) ListCustomers(ctx context.Context) ([]Customer, error) {
 
 	var result struct {
 		QueryResponse struct {
-			Customer []map[string]interface{} `json:"Customer"`
+			Customer []map[string]any `json:"Customer"`
 		} `json:"QueryResponse"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -262,7 +262,7 @@ func (c *Client) GetCustomer(ctx context.Context, customerID string) (*Customer,
 
 	var result struct {
 		QueryResponse struct {
-			Customer []map[string]interface{} `json:"Customer"`
+			Customer []map[string]any `json:"Customer"`
 		} `json:"QueryResponse"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -290,7 +290,7 @@ func (c *Client) QueryInvoices(ctx context.Context, customerID string, periodSta
 
 	var result struct {
 		QueryResponse struct {
-			Invoice []map[string]interface{} `json:"Invoice"`
+			Invoice []map[string]any `json:"Invoice"`
 		} `json:"QueryResponse"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -313,7 +313,7 @@ func (c *Client) CreateInvoice(ctx context.Context, req InvoiceCreateRequest) (*
 	}
 
 	var result struct {
-		Invoice map[string]interface{} `json:"Invoice"`
+		Invoice map[string]any `json:"Invoice"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
@@ -353,7 +353,7 @@ func (c *Client) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, er
 	}
 
 	var result struct {
-		Invoice map[string]interface{} `json:"Invoice"`
+		Invoice map[string]any `json:"Invoice"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (c *Client) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, er
 	return &inv, nil
 }
 
-func parseCustomer(raw map[string]interface{}) Customer {
+func parseCustomer(raw map[string]any) Customer {
 	c := Customer{
 		ID:     stringVal(raw, "Id"),
 		Active: boolVal(raw, "Active"),
@@ -373,13 +373,13 @@ func parseCustomer(raw map[string]interface{}) Customer {
 	if notes, ok := raw["Notes"].(string); ok {
 		c.Notes = notes
 	}
-	if email, ok := raw["PrimaryEmailAddr"].(map[string]interface{}); ok {
+	if email, ok := raw["PrimaryEmailAddr"].(map[string]any); ok {
 		c.Email = stringVal(email, "Address")
 	}
 	return c
 }
 
-func parseInvoice(raw map[string]interface{}) Invoice {
+func parseInvoice(raw map[string]any) Invoice {
 	inv := Invoice{
 		ID:          stringVal(raw, "Id"),
 		DocNumber:   stringVal(raw, "DocNumber"),
@@ -389,7 +389,7 @@ func parseInvoice(raw map[string]interface{}) Invoice {
 		PrivateNote: stringVal(raw, "PrivateNote"),
 		SyncToken:   stringVal(raw, "SyncToken"),
 	}
-	if cr, ok := raw["CustomerRef"].(map[string]interface{}); ok {
+	if cr, ok := raw["CustomerRef"].(map[string]any); ok {
 		inv.CustomerRef = CustomerRef{
 			Value: stringVal(cr, "value"),
 			Name:  stringVal(cr, "name"),
@@ -404,16 +404,16 @@ func parseInvoice(raw map[string]interface{}) Invoice {
 	return inv
 }
 
-func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
-	lines := make([]map[string]interface{}, 0, len(req.Line))
+func buildInvoicePayload(req InvoiceCreateRequest) map[string]any {
+	lines := make([]map[string]any, 0, len(req.Line))
 	for _, l := range req.Line {
-		line := map[string]interface{}{
+		line := map[string]any{
 			"Amount":     l.Amount,
 			"DetailType": "SalesItemLineDetail",
 		}
 		if l.SalesItemLineDetail != nil {
-			line["SalesItemLineDetail"] = map[string]interface{}{
-				"ItemRef": map[string]interface{}{
+			line["SalesItemLineDetail"] = map[string]any{
+				"ItemRef": map[string]any{
 					"value": l.SalesItemLineDetail.ItemRef.Value,
 				},
 				"Qty":       l.SalesItemLineDetail.Qty,
@@ -426,8 +426,8 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 		lines = append(lines, line)
 	}
 
-	payload := map[string]interface{}{
-		"CustomerRef": map[string]interface{}{
+	payload := map[string]any{
+		"CustomerRef": map[string]any{
 			"value": req.CustomerRef.Value,
 		},
 		"TxnDate":     req.TxnDate,
@@ -439,32 +439,32 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]interface{} {
 		payload["DocNumber"] = req.DocNumber
 	}
 	if req.CustomerMemo != "" {
-		payload["CustomerMemo"] = map[string]interface{}{"value": req.CustomerMemo}
+		payload["CustomerMemo"] = map[string]any{"value": req.CustomerMemo}
 	}
 	if req.BillEmail != "" {
-		payload["BillEmail"] = map[string]interface{}{"Address": req.BillEmail}
+		payload["BillEmail"] = map[string]any{"Address": req.BillEmail}
 	}
 	if req.SalesTermID != "" {
-		payload["SalesTermRef"] = map[string]interface{}{"value": req.SalesTermID}
+		payload["SalesTermRef"] = map[string]any{"value": req.SalesTermID}
 	}
 	return payload
 }
 
-func stringVal(m map[string]interface{}, key string) string {
+func stringVal(m map[string]any, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
 }
 
-func floatVal(m map[string]interface{}, key string) float64 {
+func floatVal(m map[string]any, key string) float64 {
 	if v, ok := m[key].(float64); ok {
 		return v
 	}
 	return 0
 }
 
-func boolVal(m map[string]interface{}, key string) bool {
+func boolVal(m map[string]any, key string) bool {
 	if v, ok := m[key].(bool); ok {
 		return v
 	}

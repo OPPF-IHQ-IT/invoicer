@@ -33,7 +33,7 @@ type listResponse struct {
 
 type record struct {
 	ID     string                 `json:"id"`
-	Fields map[string]interface{} `json:"fields"`
+	Fields map[string]any `json:"fields"`
 }
 
 // listRecords fetches all records from a table, handling pagination.
@@ -73,8 +73,8 @@ func (c *Client) listRecords(ctx context.Context, table string, params url.Value
 }
 
 // patchRecord updates specific fields on a single record.
-func (c *Client) patchRecord(ctx context.Context, table, recordID string, fields map[string]interface{}) error {
-	payload, err := json.Marshal(map[string]interface{}{"fields": fields})
+func (c *Client) patchRecord(ctx context.Context, table, recordID string, fields map[string]any) error {
+	payload, err := json.Marshal(map[string]any{"fields": fields})
 	if err != nil {
 		return err
 	}
