@@ -207,6 +207,49 @@ invoicer run --fiscal-year FY2026 --create-only --env sandbox
 
 ---
 
+### `invoicer campaign`
+
+Run an ad-hoc invoice batch driven by a Google Form CSV export (e.g. for a one-of facilities fundraiser or any campaign outside the regular dues cycle). The form collects member-declared contribution amounts; `invoicer` reconciles each row against Airtable by Control Number and then invoices a single QBO item with the declared amount.
+
+The expected CSV columns (the Google Form export shape) are:
+
+```
+Timestamp, Full Name, Email Address, Control Number, Invoice Amount, Please enter your requested invoice amount, Consent/Authorization
+```
+
+`Invoice Amount` is one of the standard tiers (e.g. `$150 — Standard ...`); if a member chooses "Other", the dollar amount lives in the next column.
+
+```bash
+# Dry-run: reconcile only, write the three bucket CSVs and a JSON report
+invoicer campaign submissions.csv \
+  --item-id 42 \
+  --name "2026 Facilities Drive" \
+  --matched-out matched.csv \
+  --unmatched-out unmatched.csv \
+  --skipped-out skipped.csv \
+  --out campaign-preview.json
+
+# One-shot create + email (requires both --no-dry-run and --yes)
+invoicer campaign submissions.csv \
+  --item-id 42 \
+  --name "2026 Facilities Drive" \
+  --no-dry-run --yes
+
+# Skip auto-creating QBO customers for Airtable-only members (they bucket as unmatched)
+invoicer campaign submissions.csv --item-id 42 --no-create-missing
+```
+
+Behavior notes:
+
+- **Dry run is the default.** `--no-dry-run` alone is not enough; you must also pass `--yes` to actually create and send. This makes it hard to accidentally fire production invoices.
+- **`--create-missing` is on by default.** When an Airtable record exists but has no QBO Customer ID, a customer is created in QBO (using the Airtable name+email, falling back to the form email if Airtable's is blank) and the new ID is written back to Airtable to prevent duplicates on later runs.
+- **No invoice-status writeback.** Unlike the dues `run` command, campaigns do not change the member's Airtable `Status`.
+- **No idempotency check.** Running the same CSV twice creates duplicate invoices. The invoice PrivateNote includes the campaign name, control number, and run ID for auditing, but `invoicer` does not currently pre-flight for prior submissions.
+- **Skipped vs unmatched:** rows are *skipped* when consent is missing, the amount is unparseable, the member's Airtable status is "No Longer in Chi Tau", or the row was superseded by a later submission for the same control number. They're *unmatched* when no Airtable record exists for the control number, or one exists without a QBO customer that we can't create.
+- Use `invoicer qbo doctor` to find the `--item-id` for the campaign's product.
+
+---
+
 ### `invoicer config`
 
 #### `invoicer config validate`

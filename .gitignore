@@ -45,6 +45,7 @@ cmd/invoicer/invoicer
 
 # Reconciliation output CSVs
 *.csv
+!testdata/*.csv
 
 # macOS metadata
 .DS_Store

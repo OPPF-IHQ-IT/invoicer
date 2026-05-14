@@ -9,6 +9,7 @@ var Root struct {
 	Auth      AuthCmd      `cmd:"" help:"Authenticate with QuickBooks Online."`
 	Preview   PreviewCmd   `cmd:"" help:"Preview what invoicer would create, send, or skip."`
 	Run       RunCmd       `cmd:"" help:"Execute invoice creation or sending."`
+	Campaign  CampaignCmd  `cmd:"" help:"Run an ad-hoc campaign invoice batch from a Google Form CSV."`
 	Customers CustomersCmd `cmd:"" help:"Customer reconciliation commands."`
 	Config    ConfigCmd    `cmd:"" help:"Config management commands."`
 	Airtable  AirtableCmd  `cmd:"" help:"Airtable diagnostics."`
