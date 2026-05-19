@@ -20,6 +20,12 @@ type Member struct {
 	// Reclaimable is true when Status == the configured reclaimable status value.
 	// These members are invoiceable but also owe an International Reinstatement fee.
 	Reclaimable bool
+
+	AddressLine1 string
+	AddressLine2 string
+	City         string
+	State        string
+	Zip          string
 }
 
 // DuesRecord represents a row from the Dues Records table.

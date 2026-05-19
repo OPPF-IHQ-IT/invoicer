@@ -38,22 +38,7 @@ func (c *Client) ListInvoiceableMembers(ctx context.Context, cfg *config.Airtabl
 
 	members := make([]Member, 0, len(records))
 	for _, r := range records {
-		members = append(members, Member{
-			RecordID:         r.ID,
-			ControlNumber:    stringField(r, f.ControlNumber),
-			Name:             stringField(r, f.Name),
-			Email:            stringField(r, f.Email),
-			Status:           stringField(r, f.Status),
-			QBOCustomerID:    stringField(r, f.QBOCustomerID),
-			IntlLife:         boolField(r, f.IntlLife),
-			DistrictLife:     boolField(r, f.DistrictLife),
-			StateLife:        boolField(r, f.StateLife),
-			LocalLife:        boolField(r, f.LocalLife),
-			BasileusEmeritus: boolField(r, f.BasileusEmeritus),
-			Retired:          boolField(r, f.Retired),
-			RecentMSP:        boolField(r, f.RecentMSP),
-			Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
-		})
+		members = append(members, memberFromRecord(r, cfg))
 	}
 	return members, nil
 }
@@ -72,9 +57,18 @@ func (c *Client) UpdateMemberQBOCustomerID(ctx context.Context, cfg *config.Airt
 	})
 }
 
+// UpdateMemberFields writes the provided fields onto a member record. The caller
+// is responsible for assembling only the fields that should change so empty
+// values aren't accidentally blanked.
+func (c *Client) UpdateMemberFields(ctx context.Context, cfg *config.AirtableConfig, recordID string, fields map[string]any) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	return c.patchRecord(ctx, cfg.Tables.Members, recordID, fields)
+}
+
 // ListAllMembers returns all members regardless of status (used for reconciliation).
 func (c *Client) ListAllMembers(ctx context.Context, cfg *config.AirtableConfig) ([]Member, error) {
-	f := cfg.Fields.Members
 	params := url.Values{}
 	if cfg.Views.Members != "" {
 		params.Set("view", cfg.Views.Members)
@@ -87,22 +81,32 @@ func (c *Client) ListAllMembers(ctx context.Context, cfg *config.AirtableConfig)
 
 	members := make([]Member, 0, len(records))
 	for _, r := range records {
-		members = append(members, Member{
-			RecordID:         r.ID,
-			ControlNumber:    stringField(r, f.ControlNumber),
-			Name:             stringField(r, f.Name),
-			Email:            stringField(r, f.Email),
-			Status:           stringField(r, f.Status),
-			QBOCustomerID:    stringField(r, f.QBOCustomerID),
-			IntlLife:         boolField(r, f.IntlLife),
-			DistrictLife:     boolField(r, f.DistrictLife),
-			StateLife:        boolField(r, f.StateLife),
-			LocalLife:        boolField(r, f.LocalLife),
-			BasileusEmeritus: boolField(r, f.BasileusEmeritus),
-			Retired:          boolField(r, f.Retired),
-			RecentMSP:        boolField(r, f.RecentMSP),
-			Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
-		})
+		members = append(members, memberFromRecord(r, cfg))
 	}
 	return members, nil
+}
+
+func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
+	f := cfg.Fields.Members
+	return Member{
+		RecordID:         r.ID,
+		ControlNumber:    stringField(r, f.ControlNumber),
+		Name:             stringField(r, f.Name),
+		Email:            stringField(r, f.Email),
+		Status:           stringField(r, f.Status),
+		QBOCustomerID:    stringField(r, f.QBOCustomerID),
+		IntlLife:         boolField(r, f.IntlLife),
+		DistrictLife:     boolField(r, f.DistrictLife),
+		StateLife:        boolField(r, f.StateLife),
+		LocalLife:        boolField(r, f.LocalLife),
+		BasileusEmeritus: boolField(r, f.BasileusEmeritus),
+		Retired:          boolField(r, f.Retired),
+		RecentMSP:        boolField(r, f.RecentMSP),
+		Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
+		AddressLine1:     stringField(r, f.AddressLine1),
+		AddressLine2:     stringField(r, f.AddressLine2),
+		City:             stringField(r, f.City),
+		State:            stringField(r, f.State),
+		Zip:              stringField(r, f.Zip),
+	}
 }

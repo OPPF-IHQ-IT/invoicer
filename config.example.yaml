@@ -94,6 +94,11 @@ airtable:
       basileus_emeritus: "Basileus Emeritus?"
       retired: "Retired?"
       recent_msp: "Recent MSP?"
+      address_line_1: "Address Line 1"
+      address_line_2: "Address Line 2"
+      city: "City"
+      state: "State"
+      zip: "Zip"
 
     dues_schedule:
       id: "ID"

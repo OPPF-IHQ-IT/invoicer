@@ -9,7 +9,8 @@ import (
 )
 
 type CustomersCmd struct {
-	Reconcile ReconcileCmd `cmd:"" help:"Reconcile QBO customers against Airtable members."`
+	Reconcile       ReconcileCmd       `cmd:"" help:"Reconcile QBO customers against Airtable members."`
+	ImportAddresses ImportAddressesCmd `cmd:"import-addresses" help:"Import mailing addresses (and blank-only emails) from a Google Form CSV onto Airtable member records."`
 }
 
 type ReconcileCmd struct {
@@ -41,4 +42,23 @@ func (r *ReconcileCmd) Run(globals *Globals) error {
 	}
 
 	return reconcile.Customers(context.Background(), cfg, opts)
+}
+
+type ImportAddressesCmd struct {
+	CSV          string `help:"Path to the Google Form CSV export." type:"existingfile" required:""`
+	DryRun       bool   `help:"Preview changes without writing to Airtable." default:"true" negatable:""`
+	ProcessedOut string `help:"Write a mirror of the input CSV with the 'Updated in Airtable?' column populated." type:"path"`
+}
+
+func (i *ImportAddressesCmd) Run(globals *Globals) error {
+	cfg, err := config.Load(globals.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	return reconcile.ImportAddresses(context.Background(), cfg, reconcile.AddressImportOptions{
+		CSVPath:      i.CSV,
+		DryRun:       i.DryRun,
+		ProcessedOut: i.ProcessedOut,
+	})
 }

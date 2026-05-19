@@ -135,6 +135,11 @@ type MembersFieldsConfig struct {
 	BasileusEmeritus string `yaml:"basileus_emeritus"`
 	Retired          string `yaml:"retired"`
 	RecentMSP        string `yaml:"recent_msp"`
+	AddressLine1     string `yaml:"address_line_1"`
+	AddressLine2     string `yaml:"address_line_2"`
+	City             string `yaml:"city"`
+	State            string `yaml:"state"`
+	Zip              string `yaml:"zip"`
 }
 
 type DuesScheduleFieldsConfig struct {
