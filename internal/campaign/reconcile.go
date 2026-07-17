@@ -16,6 +16,9 @@ type MatchedRow struct {
 	Member          airtable.Member
 	Amount          float64
 	AmountSource    AmountSource
+	// ItemID is the QBO Item this row invoices against, resolved from the row's
+	// Designation (via config) or the run's default item when unset.
+	ItemID          string
 	NeedsQBOCreate  bool // Airtable record exists but lacks a QBO Customer ID
 	// CreationEmail / CreationName are the values to pass to qbo.CreateCustomer
 	// when NeedsQBOCreate is true. Prefer Airtable values, fall back to form.
@@ -33,7 +36,7 @@ type UnmatchedRow struct {
 // SkippedRow is a row excluded before reconciliation (consent, bad amount, ex-member).
 type SkippedRow struct {
 	Row    Row
-	Reason string // "no_consent", "bad_amount", "no_longer_member", "duplicate_superseded"
+	Reason string // "no_consent", "bad_amount", "unknown_designation", "no_longer_member", "duplicate_superseded"
 }
 
 // Result is the output of Reconcile — three buckets the caller renders + acts on.
@@ -49,6 +52,10 @@ type Options struct {
 	// QBO Customer ID are eligible to have a QBO customer created downstream.
 	// When false, they bucket as unmatched (no_qbo_customer_id).
 	CreateMissing bool
+	// DefaultItemID is the QBO Item used for rows with an empty Designation. It
+	// comes from the run's --item-id flag and guarantees every matched row has
+	// an item even when the designation map is empty.
+	DefaultItemID string
 }
 
 // Reconcile groups CSV rows against Airtable members.
@@ -87,6 +94,20 @@ func Reconcile(ctx context.Context, cfg *config.Config, rows []Row, opts Options
 			continue
 		}
 
+		// Resolve the QBO item from the row's designation. Empty designation ->
+		// the run's default item (backward-compatible with pre-designation
+		// exports). A non-empty designation that isn't mapped is skipped loudly
+		// rather than filed against the default.
+		itemID := opts.DefaultItemID
+		if d := strings.TrimSpace(row.Designation); d != "" {
+			mapped, ok := cfg.Campaign.ItemForDesignation(d)
+			if !ok {
+				res.Skipped = append(res.Skipped, SkippedRow{Row: row, Reason: "unknown_designation"})
+				continue
+			}
+			itemID = mapped
+		}
+
 		ctrl := normalizeControlNumber(row.ControlNumber)
 		member, found := byControl[ctrl]
 		if !found {
@@ -104,6 +125,7 @@ func Reconcile(ctx context.Context, cfg *config.Config, rows []Row, opts Options
 			Member:       member,
 			Amount:       amount,
 			AmountSource: source,
+			ItemID:       itemID,
 		}
 
 		if member.QBOCustomerID == "" {

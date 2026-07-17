@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
@@ -13,6 +15,8 @@ import (
 
 // RunOptions controls the create+send execution phase.
 type RunOptions struct {
+	// ItemID is the fallback QBO Item used only when a matched row carries no
+	// resolved ItemID (defensive; reconciliation normally sets it per row).
 	ItemID       string
 	CampaignName string
 	CustomerMemo string // overrides cfg.Invoice.CustomerMemo when non-empty
@@ -24,6 +28,7 @@ type PerRowOutcome struct {
 	Name          string
 	Email         string
 	Amount        float64
+	ItemID        string // QBO Item this row was invoiced against
 	// Status is one of: "invoiced_and_sent", "created_not_sent",
 	// "created_send_failed", "create_failed", "customer_create_failed".
 	Status      string
@@ -78,11 +83,17 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 	result := &RunResult{RunID: runID}
 
 	for _, m := range matched {
+		itemID := m.ItemID
+		if itemID == "" {
+			itemID = opts.ItemID
+		}
+
 		out := PerRowOutcome{
 			ControlNumber: m.Member.ControlNumber,
 			Name:          m.Member.Name,
 			Email:         m.Member.Email,
 			Amount:        m.Amount,
+			ItemID:        itemID,
 			QBOCustomer:   m.Member.QBOCustomerID,
 		}
 
@@ -133,7 +144,7 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 					DetailType:  "SalesItemLineDetail",
 					Description: description,
 					SalesItemLineDetail: &qbo.SalesItemLineDetail{
-						ItemRef:   qbo.ItemRef{Value: opts.ItemID},
+						ItemRef:   qbo.ItemRef{Value: itemID},
 						Qty:       1,
 						UnitPrice: m.Amount,
 					},
@@ -182,10 +193,20 @@ func buildPrivateNote(campaignName, controlNumber, runID string) string {
 	return fmt.Sprintf("invoicer campaign=%s control_number=%s run_id=%s", name, controlNumber, runID)
 }
 
-// VerifyItemID confirms an item ID exists in QBO before reconciling. Returns a
-// helpful error listing nothing — operators can run `invoicer qbo doctor` to
-// list items.
-func VerifyItemID(ctx context.Context, cfg *config.Config, itemID string) error {
+// VerifyItems confirms every supplied item ID exists in QBO before reconciling,
+// fetching the item list once. Empty IDs are ignored. Operators can run
+// `invoicer qbo doctor` to list active items when one is missing.
+func VerifyItems(ctx context.Context, cfg *config.Config, itemIDs []string) error {
+	want := make(map[string]struct{})
+	for _, id := range itemIDs {
+		if id != "" {
+			want[id] = struct{}{}
+		}
+	}
+	if len(want) == 0 {
+		return nil
+	}
+
 	qboClient, err := qbo.NewClient(cfg)
 	if err != nil {
 		return err
@@ -195,9 +216,16 @@ func VerifyItemID(ctx context.Context, cfg *config.Config, itemID string) error 
 		return fmt.Errorf("listing QBO items: %w", err)
 	}
 	for _, it := range items {
-		if it.ID == itemID {
-			return nil
-		}
+		delete(want, it.ID)
 	}
-	return fmt.Errorf("QBO item %q not found (run 'invoicer qbo doctor' to list active items)", itemID)
+	if len(want) == 0 {
+		return nil
+	}
+
+	missing := make([]string, 0, len(want))
+	for id := range want {
+		missing = append(missing, id)
+	}
+	sort.Strings(missing)
+	return fmt.Errorf("QBO item(s) %s not found (run 'invoicer qbo doctor' to list active items)", strings.Join(missing, ", "))
 }

@@ -20,6 +20,7 @@ type Row struct {
 	InvoiceAmountChoice        string // raw value from the "Invoice Amount" column
 	RequestedAmountOther       string // raw value from the "Please enter your requested invoice amount" column
 	Consent                    string // raw value from the "Consent/Authorization" column
+	Designation                string // raw value from the optional "Designation" column (empty when the column is absent)
 }
 
 // expected column headers, in any order, from the Google Form export
@@ -31,6 +32,7 @@ const (
 	colInvoiceAmount = "Invoice Amount"
 	colOtherAmount   = "Please enter your requested invoice amount"
 	colConsent       = "Consent/Authorization"
+	colDesignation   = "Designation" // optional; routes the row to a QBO item via config
 )
 
 var requiredColumns = []string{
@@ -80,9 +82,20 @@ func LoadRows(path string) ([]Row, error) {
 		}
 		lineNum++
 
+		// get reads a required column; its presence is guaranteed by the header
+		// validation above, so a bare idx lookup is safe.
 		get := func(col string) string {
 			i := idx[col]
 			if i >= len(rec) {
+				return ""
+			}
+			return strings.TrimSpace(rec[i])
+		}
+		// getOptional reads a column that may be absent. It must check idx
+		// membership — a missing key would otherwise resolve to column 0.
+		getOptional := func(col string) string {
+			i, ok := idx[col]
+			if !ok || i >= len(rec) {
 				return ""
 			}
 			return strings.TrimSpace(rec[i])
@@ -98,6 +111,7 @@ func LoadRows(path string) ([]Row, error) {
 			InvoiceAmountChoice:  get(colInvoiceAmount),
 			RequestedAmountOther: get(colOtherAmount),
 			Consent:              get(colConsent),
+			Designation:          getOptional(colDesignation),
 		})
 	}
 

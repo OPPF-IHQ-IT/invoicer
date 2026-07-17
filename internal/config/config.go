@@ -18,6 +18,38 @@ type Config struct {
 	QBOItems   QBOItemsConfig   `yaml:"qbo_items"`
 	Airtable   AirtableConfig   `yaml:"airtable"`
 	Invoice    InvoiceConfig    `yaml:"invoice"`
+	Campaign   CampaignConfig   `yaml:"campaign"`
+}
+
+// CampaignConfig holds settings for the ad-hoc campaign invoice runs.
+type CampaignConfig struct {
+	// Designations maps a Google Form "Designation" answer to the QBO Item ID
+	// its contribution should be invoiced against (e.g. water/lights vs. the
+	// facility internet bill). Rows with an empty Designation fall back to the
+	// run's --item-id; rows whose Designation isn't in this map are skipped as
+	// "unknown_designation" so a mislabeled export never files silently to the
+	// wrong item.
+	Designations map[string]string `yaml:"designations"`
+}
+
+// ItemForDesignation returns the configured QBO Item ID for a designation label.
+// Matching is case- and whitespace-insensitive so minor Google Form label edits
+// (extra spaces, capitalization) still route correctly. ok is false when the
+// designation has no mapping.
+func (c CampaignConfig) ItemForDesignation(designation string) (itemID string, ok bool) {
+	want := normalizeDesignation(designation)
+	for label, id := range c.Designations {
+		if normalizeDesignation(label) == want {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// normalizeDesignation lowercases and collapses internal whitespace so config
+// keys and form answers compare forgivingly.
+func normalizeDesignation(s string) string {
+	return strings.ToLower(strings.Join(strings.Fields(s), " "))
 }
 
 type AppConfig struct {

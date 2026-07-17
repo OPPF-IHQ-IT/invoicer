@@ -40,7 +40,7 @@ type Summary struct {
 // the corresponding paths are set.
 func WriteReconciliationCSVs(res *Result, superseded []Row, opts ReportOptions) error {
 	if opts.MatchedOut != "" {
-		rows := [][]string{{"control_number", "name", "email", "qbo_customer_id", "amount", "amount_source", "needs_qbo_create"}}
+		rows := [][]string{{"control_number", "name", "email", "qbo_customer_id", "amount", "amount_source", "designation", "item_id", "needs_qbo_create"}}
 		for _, m := range res.Matched {
 			rows = append(rows, []string{
 				m.Member.ControlNumber,
@@ -49,6 +49,8 @@ func WriteReconciliationCSVs(res *Result, superseded []Row, opts ReportOptions) 
 				m.Member.QBOCustomerID,
 				strconv.FormatFloat(m.Amount, 'f', 2, 64),
 				string(m.AmountSource),
+				m.Row.Designation,
+				m.ItemID,
 				strconv.FormatBool(m.NeedsQBOCreate),
 			})
 		}

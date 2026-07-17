@@ -12,7 +12,7 @@ import (
 type CampaignCmd struct {
 	CSV string `arg:"" help:"Path to the Google Form CSV export." type:"existingfile"`
 
-	ItemID       string `help:"QBO Item ID to invoice against." required:""`
+	ItemID       string `help:"Default QBO Item ID for rows with no Designation; per-designation items come from config campaign.designations." required:""`
 	Name         string `help:"Campaign name; used as line description and in the invoice PrivateNote."`
 	Memo         string `help:"Override invoice.customer_memo for this run."`
 	DryRun       bool   `help:"Reconcile only; do not create or send invoices." default:"true" negatable:""`
@@ -43,7 +43,11 @@ func (c *CampaignCmd) Run(globals *Globals) error {
 
 	ctx := context.Background()
 
-	if err := campaign.VerifyItemID(ctx, cfg, c.ItemID); err != nil {
+	itemIDs := []string{c.ItemID}
+	for _, id := range cfg.Campaign.Designations {
+		itemIDs = append(itemIDs, id)
+	}
+	if err := campaign.VerifyItems(ctx, cfg, itemIDs); err != nil {
 		return err
 	}
 
@@ -56,7 +60,10 @@ func (c *CampaignCmd) Run(globals *Globals) error {
 		fmt.Fprintf(os.Stderr, "campaign: superseded earlier submission for control# %s (line %d)\n", r.ControlNumber, r.LineNumber)
 	}
 
-	res, err := campaign.Reconcile(ctx, cfg, rows, campaign.Options{CreateMissing: c.CreateMissing})
+	res, err := campaign.Reconcile(ctx, cfg, rows, campaign.Options{
+		CreateMissing: c.CreateMissing,
+		DefaultItemID: c.ItemID,
+	})
 	if err != nil {
 		return err
 	}
