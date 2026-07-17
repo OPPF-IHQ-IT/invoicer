@@ -127,3 +127,25 @@ invoice:
   # → Terms; the ID appears in the URL when editing the term. Leave blank to
   # send no Terms reference.
   sales_term_id: ""
+
+# Ad-hoc campaign invoice runs (`invoicer campaign <csv>`).
+campaign:
+  # designations maps a Google Form "Designation" answer to the QBO Item ID its
+  # contribution should be invoiced against. This lets a single campaign fund
+  # multiple line items — e.g. a Special Facilities Utility Drive that covers
+  # both water/lights and the facility's broadband internet (fiber) bill.
+  #
+  # Each key MUST match a Designation dropdown option on the form (matching is
+  # case- and whitespace-insensitive, but spelling must match). Values are QBO
+  # Item IDs — run `invoicer qbo doctor` to list them.
+  #
+  # Routing at run time:
+  #   empty Designation  -> the run's --item-id (default/fallback item)
+  #   mapped Designation -> its item here
+  #   unmapped, non-empty -> row skipped as "unknown_designation" (never filed
+  #                          silently to the wrong item)
+  #
+  # Leave this out entirely for single-item campaigns; --item-id alone still works.
+  designations:
+    "Facility Utilities (Water/Lights)": ""  # QBO Item ID for the water/lights contribution
+    "Facility Internet (Fiber)": ""          # QBO Item ID for the internet (fiber) contribution
