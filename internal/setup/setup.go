@@ -57,6 +57,7 @@ qbo_items:
   poll_worker_credit_unit: 50
   international_reinstatement: ""
   international_undergrad: ""
+  member_credit: ""
 
 airtable:
   api_key: "{{ .AirtableAPIKey }}"
@@ -67,6 +68,7 @@ airtable:
     dues_records: "Dues Records"
     dues_schedule: "Dues Schedule"
     poll_worker_credit_utilization: "Poll Worker Dues Credit Utilization"
+    member_credits: "Member Credits"
 
   views:
     members: "Internal Administrative Roster"
@@ -117,6 +119,15 @@ airtable:
       credits_earned: "Poll Worker Dues Credits Earned"
       credits_spent: "Poll Worker Dues Credits Spent"
       credits_available: "Poll Worker Dues Credits Available"
+
+    # Available credit is computed as Earned - Spent.
+    member_credits:
+      member_link: "Members"
+      type: "Type"
+      applies_to: "Applies To"     # "Local Only" limits a credit to local dues; anything else covers the total due
+      earned: "Earned"
+      spent: "Spent"
+      max_per_year: "Max Per Year" # optional cap per invoice; blank or 0 means no cap
 
 invoice:
   due_on_receipt: true

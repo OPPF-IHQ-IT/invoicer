@@ -33,8 +33,9 @@ type listResponse struct {
 }
 
 type record struct {
-	ID     string                 `json:"id"`
-	Fields map[string]any `json:"fields"`
+	ID          string         `json:"id"`
+	CreatedTime string         `json:"createdTime"`
+	Fields      map[string]any `json:"fields"`
 }
 
 // listRecords fetches all records from a table, handling pagination.

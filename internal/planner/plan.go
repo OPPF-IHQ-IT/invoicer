@@ -69,6 +69,11 @@ func Build(ctx context.Context, cfg *config.Config, fy fiscal.Year, asOf time.Ti
 		return nil, fmt.Errorf("no dues schedule rows found for %s or ALL; cannot proceed", fy.AirtableLabel)
 	}
 
+	memberCredits, err := atClient.ListMemberCredits(ctx, &cfg.Airtable)
+	if err != nil {
+		return nil, fmt.Errorf("loading member credits: %w", err)
+	}
+
 	customers, err := qboClient.ListCustomers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("loading QBO customers: %w", err)
@@ -84,7 +89,7 @@ func Build(ctx context.Context, cfg *config.Config, fy fiscal.Year, asOf time.Ti
 	}
 
 	for _, member := range members {
-		mp := buildMemberPlan(ctx, cfg, atClient, qboClient, fy, asOf, member, scheduleRows, customerIndex, sendMode)
+		mp := buildMemberPlan(ctx, cfg, atClient, qboClient, fy, asOf, member, scheduleRows, memberCredits[member.RecordID], customerIndex, sendMode)
 		plan.MemberPlans = append(plan.MemberPlans, mp)
 	}
 
@@ -100,6 +105,7 @@ func buildMemberPlan(
 	asOf time.Time,
 	member airtable.Member,
 	scheduleRows []airtable.DuesScheduleRow,
+	memberCredits []airtable.MemberCredit,
 	customerIndex map[string]*qbo.Customer,
 	sendMode bool,
 ) MemberPlan {
@@ -133,6 +139,7 @@ func buildMemberPlan(
 		AsOf:             asOf,
 		Member:           member,
 		PollWorkerCredit: totalCredit,
+		MemberCredits:    memberCredits,
 		Schedule:         scheduleRows,
 		Items:            cfg.QBOItems,
 	})

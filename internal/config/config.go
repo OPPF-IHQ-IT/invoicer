@@ -124,6 +124,7 @@ type QBOItemsConfig struct {
 	PollWorkerCreditUnit       float64 `yaml:"poll_worker_credit_unit"` // dollar value of one QBO unit (default $50)
 	InternationalReinstatement string  `yaml:"international_reinstatement"`
 	InternationalUndergrad     string  `yaml:"international_undergrad"` // International dues at the undergraduate rate
+	MemberCredit               string  `yaml:"member_credit"`           // negative line for Member Credits rows (e.g. "Overpayment Credit")
 }
 
 type AirtableConfig struct {
@@ -145,6 +146,8 @@ type AirtableTablesConfig struct {
 	DuesRecords                string `yaml:"dues_records"`
 	DuesSchedule               string `yaml:"dues_schedule"`
 	PollWorkerCreditUtilization string `yaml:"poll_worker_credit_utilization"`
+	// MemberCredits is optional. When empty, no member credits are applied.
+	MemberCredits string `yaml:"member_credits"`
 }
 
 type AirtableViewsConfig struct {
@@ -157,6 +160,7 @@ type AirtableFieldsConfig struct {
 	Members      MembersFieldsConfig      `yaml:"members"`
 	DuesSchedule DuesScheduleFieldsConfig `yaml:"dues_schedule"`
 	PollWorkerCredits PollWorkerCreditsFieldsConfig `yaml:"poll_worker_credits"`
+	MemberCredits     MemberCreditsFieldsConfig     `yaml:"member_credits"`
 }
 
 type MembersFieldsConfig struct {
@@ -197,6 +201,17 @@ type PollWorkerCreditsFieldsConfig struct {
 	CreditsEarned string `yaml:"credits_earned"`
 	CreditsSpent  string `yaml:"credits_spent"`
 	CreditsAvailable string `yaml:"credits_available"`
+}
+
+// MemberCreditsFieldsConfig maps the Member Credits table. Available credit
+// is computed as Earned - Spent, so no Available column is required.
+type MemberCreditsFieldsConfig struct {
+	MemberLink string `yaml:"member_link"`
+	Type       string `yaml:"type"`
+	AppliesTo  string `yaml:"applies_to"`
+	Earned     string `yaml:"earned"`
+	Spent      string `yaml:"spent"`
+	MaxPerYear string `yaml:"max_per_year"`
 }
 
 type AirtableStatusValuesConfig struct {
@@ -307,6 +322,25 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Airtable.Fields.Members.UndergradRate == "" {
 		cfg.Airtable.Fields.Members.UndergradRate = "Undergraduate Rate?"
+	}
+	mc := &cfg.Airtable.Fields.MemberCredits
+	if mc.MemberLink == "" {
+		mc.MemberLink = "Members"
+	}
+	if mc.Type == "" {
+		mc.Type = "Type"
+	}
+	if mc.AppliesTo == "" {
+		mc.AppliesTo = "Applies To"
+	}
+	if mc.Earned == "" {
+		mc.Earned = "Earned"
+	}
+	if mc.Spent == "" {
+		mc.Spent = "Spent"
+	}
+	if mc.MaxPerYear == "" {
+		mc.MaxPerYear = "Max Per Year"
 	}
 	if cfg.FiscalYear.StartMonth == 0 {
 		cfg.FiscalYear.StartMonth = 11

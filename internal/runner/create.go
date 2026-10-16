@@ -74,6 +74,13 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 		if err := consumePollWorkerCredits(ctx, atClient, cfg, mp); err != nil {
 			mp.SkipDetail += fmt.Sprintf("; poll worker credit update failed: %v", err)
 		}
+
+		// Record Member Credits drawn on by this invoice.
+		for _, ac := range mp.CalcResult.AppliedCredits {
+			if err := atClient.SetMemberCreditSpent(ctx, &cfg.Airtable, ac.RecordID, ac.SpentBefore+ac.Amount); err != nil {
+				mp.SkipDetail += fmt.Sprintf("; member credit %s update failed (add $%.2f to Spent by hand): %v", ac.RecordID, ac.Amount, err)
+			}
+		}
 	}
 
 	return &Result{Plan: plan, RunID: runID}, nil

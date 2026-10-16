@@ -46,6 +46,7 @@ var testItems = config.QBOItemsConfig{
 	PollWorkerCredit:           "ITEM_PWC",
 	InternationalReinstatement: "ITEM_REINSTATEMENT",
 	InternationalUndergrad:     "ITEM_INTL_UGRAD",
+	MemberCredit:               "ITEM_MEMBER_CREDIT",
 }
 
 func activeMember() airtable.Member {
@@ -516,5 +517,149 @@ func TestCalculate_RecentMSPInitiatedElsewhereRetiredOwesRetireeLocal(t *testing
 	}
 	if want := 98.00; result.Total != want {
 		t.Errorf("MSP initiated elsewhere retiree total: got %.2f, want %.2f", result.Total, want)
+	}
+}
+
+func creditLines(result CalculationResult) []qbo.InvoiceLine {
+	var out []qbo.InvoiceLine
+	for _, l := range result.Lines {
+		if l.SalesItemLineDetail != nil && l.SalesItemLineDetail.ItemRef.Value == "ITEM_MEMBER_CREDIT" {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// A retired triple-life brother with an overpayment credit owes only retiree
+// local dues, which the credit covers in full.
+func TestCalculate_MemberCreditCoversRetireeLocal(t *testing.T) {
+	m := activeMember()
+	m.Retired, m.IntlLife, m.DistrictLife, m.StateLife = true, true, true, true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Type: "Overpayment", Earned: 377, Spent: 98}},
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if result.Total != 0 || !result.IsZeroTotal {
+		t.Errorf("Total: got %.2f, want 0", result.Total)
+	}
+	lines := creditLines(result)
+	if len(lines) != 1 || lines[0].Amount != -98 || lines[0].Description != "Overpayment Credit" {
+		t.Fatalf("credit lines: got %+v, want one -98 Overpayment Credit line", lines)
+	}
+	want := []AppliedCredit{{RecordID: "recC1", Amount: 98, SpentBefore: 98}}
+	if len(result.AppliedCredits) != 1 || result.AppliedCredits[0] != want[0] {
+		t.Errorf("AppliedCredits: got %+v, want %+v", result.AppliedCredits, want)
+	}
+}
+
+func TestCalculate_MemberCreditPartiallyCoversTotal(t *testing.T) {
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 31}},
+	})
+	want := 125.00 + 20.00 + 15.00 + 198.00 - 31.00
+	if result.Total != want {
+		t.Errorf("Total: got %.2f, want %.2f", result.Total, want)
+	}
+	if lines := creditLines(result); len(lines) != 1 || lines[0].Description != "Member Credit" {
+		t.Errorf("credit lines: got %+v, want one untyped Member Credit line", lines)
+	}
+}
+
+func TestCalculate_MemberCreditCoversUpperLevelsWhenTotalDue(t *testing.T) {
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 1000}},
+	})
+	if result.Total != 0 {
+		t.Errorf("Total: got %.2f, want 0", result.Total)
+	}
+	if got := result.AppliedCredits[0].Amount; got != 358 {
+		t.Errorf("applied: got %.2f, want 358", got)
+	}
+}
+
+func TestCalculate_MemberCreditLocalOnlyStopsAtLocal(t *testing.T) {
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOfLate, Member: activeMember(), Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 1000, LocalOnly: true}},
+	})
+	// Local dues plus the local late fee are covered; upper levels are not.
+	if got := result.AppliedCredits[0].Amount; got != 198+20 {
+		t.Errorf("applied: got %.2f, want 218", got)
+	}
+}
+
+func TestCalculate_MemberCreditLocalOnlyAfterPollWorkerCredit(t *testing.T) {
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: testSchedule, Items: testItems,
+		PollWorkerCredit: 150,
+		MemberCredits:    []airtable.MemberCredit{{RecordID: "recC1", Earned: 1000, LocalOnly: true}},
+	})
+	if got := result.AppliedCredits[0].Amount; got != 48 {
+		t.Errorf("applied: got %.2f, want 48 (198 local - 150 poll credit)", got)
+	}
+}
+
+func TestCalculate_MemberCreditMaxPerYear(t *testing.T) {
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 1000, MaxPerYear: 50}},
+	})
+	if got := result.AppliedCredits[0].Amount; got != 50 {
+		t.Errorf("applied: got %.2f, want 50", got)
+	}
+}
+
+func TestCalculate_MemberCreditsLocalOnlyFirstThenOldest(t *testing.T) {
+	m := activeMember()
+	m.Retired, m.IntlLife, m.DistrictLife, m.StateLife = true, true, true, true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{
+			{RecordID: "recTotal1", Earned: 60},
+			{RecordID: "recTotal2", Earned: 60},
+			{RecordID: "recLocal", Earned: 30, LocalOnly: true},
+		},
+	})
+	want := []AppliedCredit{
+		{RecordID: "recLocal", Amount: 30},
+		{RecordID: "recTotal1", Amount: 60},
+		{RecordID: "recTotal2", Amount: 8},
+	}
+	if len(result.AppliedCredits) != len(want) {
+		t.Fatalf("AppliedCredits: got %+v, want %+v", result.AppliedCredits, want)
+	}
+	for i := range want {
+		if result.AppliedCredits[i] != want[i] {
+			t.Errorf("AppliedCredits[%d]: got %+v, want %+v", i, result.AppliedCredits[i], want[i])
+		}
+	}
+}
+
+func TestCalculate_MemberCreditOnZeroInvoiceIsUnused(t *testing.T) {
+	m := activeMember()
+	m.IntlLife, m.DistrictLife, m.StateLife, m.LocalLife = true, true, true, true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 100}},
+	})
+	if len(result.AppliedCredits) != 0 || len(creditLines(result)) != 0 {
+		t.Errorf("expected no credit applied on a $0 invoice, got %+v", result.AppliedCredits)
+	}
+}
+
+func TestCalculate_MemberCreditMissingItemSkips(t *testing.T) {
+	items := testItems
+	items.MemberCredit = ""
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: testSchedule, Items: items,
+		MemberCredits: []airtable.MemberCredit{{RecordID: "recC1", Earned: 100}},
+	})
+	if result.SkipReason != SkipReasonQBOItemMappingMissing {
+		t.Errorf("SkipReason: got %q, want %q", result.SkipReason, SkipReasonQBOItemMappingMissing)
 	}
 }

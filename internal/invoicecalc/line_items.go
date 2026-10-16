@@ -1,6 +1,10 @@
 package invoicecalc
 
 import (
+	"math"
+	"strings"
+
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
 )
@@ -36,16 +40,17 @@ func (l lineItem) toQBOLine() qbo.InvoiceLine {
 }
 
 // buildLineItems constructs the full set of invoice line items for a member.
-// It applies life membership offsets, BE offsets, retiree rate, and poll worker credits.
+// It applies life membership offsets, BE offsets, retiree rate, poll worker
+// credits, and finally Member Credits.
 // At-large members pay International, District, and State elsewhere, so they
 // are invoiced for the local components only.
-func buildLineItems(input CalculationInput, schedule scheduleMap, items config.QBOItemsConfig) ([]lineItem, SkipReason) {
+func buildLineItems(input CalculationInput, schedule scheduleMap, items config.QBOItemsConfig) ([]lineItem, []AppliedCredit, SkipReason) {
 	var lines []lineItem
 
 	if !input.Member.AtLarge {
 		upper, skip := buildUpperLevelLines(input, schedule, items)
 		if skip != SkipReasonNone {
-			return nil, skip
+			return nil, nil, skip
 		}
 		lines = append(lines, upper...)
 	}
@@ -53,18 +58,89 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 	// Local — priority: BE > LocalLife > Recent MSP (chapter initiate) > Retired > Standard
 	localLines, skip := buildLocalLines(input, schedule, items)
 	if skip != SkipReasonNone {
-		return nil, skip
+		return nil, nil, skip
 	}
 	lines = append(lines, localLines...)
+	localDue := sumAmounts(localLines)
 
 	// Late fee
 	if input.FY.IsLate(input.AsOf) {
 		if lateFee, ok := schedule.resolve("Local Late Fee"); ok {
 			lines = append(lines, lineItem{ItemID: items.LocalLateFee, Description: "Local Late Fee", Amount: lateFee.Amount})
+			localDue += lateFee.Amount
 		}
 	}
 
-	return lines, SkipReasonNone
+	creditLines, applied, skip := memberCreditLines(input.MemberCredits, items, sumAmounts(lines), localDue)
+	if skip != SkipReasonNone {
+		return nil, nil, skip
+	}
+	lines = append(lines, creditLines...)
+
+	return lines, applied, SkipReasonNone
+}
+
+// memberCreditLines draws on the member's Member Credits rows, oldest first,
+// without taking the invoice (or, for "Local Only" credits, the local
+// portion) below zero, and never more than a row's Max Per Year. Local-only
+// credits are applied before credits that cover the total due, so the more
+// restricted credit is used first.
+func memberCreditLines(credits []airtable.MemberCredit, items config.QBOItemsConfig, totalDue, localDue float64) ([]lineItem, []AppliedCredit, SkipReason) {
+	ordered := make([]airtable.MemberCredit, 0, len(credits))
+	for _, c := range credits {
+		if c.LocalOnly {
+			ordered = append(ordered, c)
+		}
+	}
+	for _, c := range credits {
+		if !c.LocalOnly {
+			ordered = append(ordered, c)
+		}
+	}
+
+	var lines []lineItem
+	var applied []AppliedCredit
+	for _, c := range ordered {
+		amount := min(c.Available(), totalDue)
+		if c.LocalOnly {
+			amount = min(amount, localDue)
+		}
+		if c.MaxPerYear > 0 {
+			amount = min(amount, c.MaxPerYear)
+		}
+		amount = roundCents(amount)
+		if amount <= 0 {
+			continue
+		}
+		if items.MemberCredit == "" {
+			return nil, nil, SkipReasonQBOItemMappingMissing
+		}
+
+		desc := "Member Credit"
+		if t := strings.TrimSpace(c.Type); t != "" {
+			desc = t + " Credit"
+		}
+		lines = append(lines, lineItem{ItemID: items.MemberCredit, Description: desc, Amount: -amount})
+		applied = append(applied, AppliedCredit{RecordID: c.RecordID, Amount: amount, SpentBefore: c.Spent})
+
+		totalDue -= amount
+		if c.LocalOnly {
+			localDue -= amount
+		}
+	}
+	return lines, applied, SkipReasonNone
+}
+
+func sumAmounts(lines []lineItem) float64 {
+	var total float64
+	for _, l := range lines {
+		total += l.Amount
+	}
+	return total
+}
+
+func roundCents(v float64) float64 {
+	return math.Round(v*100) / 100
 }
 
 // buildUpperLevelLines constructs the International, District, and State line

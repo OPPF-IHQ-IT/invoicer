@@ -63,3 +63,22 @@ type PollWorkerCredit struct {
 	CreditsSpent     float64
 	CreditsAvailable float64
 }
+
+// MemberCredit represents a row from the Member Credits table: a dollar
+// credit (overpayment, prepayment, hardship, ...) applied to dues invoices
+// until it is spent.
+type MemberCredit struct {
+	RecordID    string
+	MemberID    string // linked Member record ID
+	Type        string // e.g. "Overpayment"
+	LocalOnly   bool   // Applies To = "Local Only"; otherwise applies to the total due
+	Earned      float64
+	Spent       float64
+	MaxPerYear  float64 // 0 means no cap
+	CreatedTime string  // RFC 3339; used for oldest-first ordering
+}
+
+// Available returns the unspent credit.
+func (c MemberCredit) Available() float64 {
+	return c.Earned - c.Spent
+}

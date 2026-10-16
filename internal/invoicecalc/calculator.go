@@ -29,6 +29,7 @@ type CalculationInput struct {
 	AsOf            time.Time
 	Member          airtable.Member
 	PollWorkerCredit float64 // total available credits in dollars
+	MemberCredits   []airtable.MemberCredit // this member's Member Credits rows, oldest first
 	Schedule        []airtable.DuesScheduleRow
 	Items           config.QBOItemsConfig
 }
@@ -41,6 +42,16 @@ type CalculationResult struct {
 	SkipReason  SkipReason
 	SkipDetail  string
 	IsZeroTotal bool
+	// AppliedCredits lists the Member Credits rows drawn on by this invoice,
+	// so their Spent totals can be updated once the invoice is created.
+	AppliedCredits []AppliedCredit
+}
+
+// AppliedCredit is the amount of one Member Credits row used on an invoice.
+type AppliedCredit struct {
+	RecordID    string
+	Amount      float64
+	SpentBefore float64
 }
 
 // Calculate computes the expected invoice line items for a member.
@@ -50,7 +61,7 @@ func Calculate(input CalculationInput) CalculationResult {
 		return CalculationResult{SkipReason: skipReason, SkipDetail: skipDetail}
 	}
 
-	lines, skip := buildLineItems(input, sm, input.Items)
+	lines, applied, skip := buildLineItems(input, sm, input.Items)
 	if skip != SkipReasonNone {
 		return CalculationResult{SkipReason: skip}
 	}
@@ -69,6 +80,7 @@ func Calculate(input CalculationInput) CalculationResult {
 		Total:       total,
 		LineHash:    hash,
 		IsZeroTotal: total == 0,
+		AppliedCredits: applied,
 	}
 }
 

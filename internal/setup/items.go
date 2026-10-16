@@ -43,6 +43,7 @@ var components = []component{
 	{Label: "Poll Worker Dues Credit", ConfigKey: "poll_worker_credit", Optional: true},
 	{Label: "International Reinstatement", ConfigKey: "international_reinstatement", Optional: true},
 	{Label: "International Dues (Undergraduate Rate)", ConfigKey: "international_undergrad", Optional: true},
+	{Label: "Member Credit (e.g. Overpayment Credit)", ConfigKey: "member_credit", Optional: true},
 }
 
 // RunItems fetches QBO products and walks through mapping each dues component interactively.
