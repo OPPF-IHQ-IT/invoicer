@@ -314,6 +314,28 @@ func TestCalculate_ReclaimableMemberOwesReinstatement(t *testing.T) {
 	}
 }
 
+func TestCalculate_ALLFallbackIsCaseInsensitive(t *testing.T) {
+	// Airtable single-select option is labelled "All"; FY row must still win.
+	schedule := []airtable.DuesScheduleRow{
+		{FiscalYear: "All", Level: "International", Amount: 125.00},
+		{FiscalYear: "All", Level: "District", Amount: 20.00},
+		{FiscalYear: "All", Level: "State", Amount: 15.00},
+		{FiscalYear: "All", Level: "Local", Amount: 198.00},
+		{FiscalYear: "2025-2026", Level: "Local", Amount: 248.00},
+		{FiscalYear: "All", Level: "Local (Retiree)", Amount: 98.00},
+	}
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: activeMember(), Schedule: schedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s (%s)", result.SkipReason, result.SkipDetail)
+	}
+	want := 125.00 + 20.00 + 15.00 + 248.00
+	if result.Total != want {
+		t.Errorf("All fallback total: got %.2f, want %.2f", result.Total, want)
+	}
+}
+
 func TestCalculate_ALLFallback(t *testing.T) {
 	// Only International in schedule uses ALL; others are FY-specific.
 	schedule := []airtable.DuesScheduleRow{

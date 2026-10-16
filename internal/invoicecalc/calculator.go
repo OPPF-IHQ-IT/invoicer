@@ -2,6 +2,7 @@ package invoicecalc
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
@@ -81,7 +82,7 @@ func buildScheduleMap(rows []airtable.DuesScheduleRow, airtableFY string) (sched
 	allRows := make(map[string][]airtable.DuesScheduleRow)
 
 	for _, r := range rows {
-		if r.FiscalYear == "ALL" {
+		if strings.EqualFold(strings.TrimSpace(r.FiscalYear), "ALL") {
 			allRows[r.Level] = append(allRows[r.Level], r)
 		} else {
 			fyRows[r.Level] = append(fyRows[r.Level], r)

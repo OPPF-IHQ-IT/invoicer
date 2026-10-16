@@ -285,6 +285,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.Airtable.Fields.Members.Name == "" {
 		cfg.Airtable.Fields.Members.Name = "Name"
 	}
+	if cfg.Airtable.Fields.Members.RecentMSP == "" {
+		cfg.Airtable.Fields.Members.RecentMSP = "Recent MSP?"
+	}
 	if cfg.FiscalYear.StartMonth == 0 {
 		cfg.FiscalYear.StartMonth = 11
 		cfg.FiscalYear.StartDay = 1

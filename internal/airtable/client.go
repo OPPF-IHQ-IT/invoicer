@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -109,11 +110,26 @@ func stringField(r record, key string) string {
 	return ""
 }
 
+// boolField reads a flag field. Besides checkboxes, it accepts formula fields
+// that render a flag as text (e.g. IF(..., "✅", "")) or as a number (1/0):
+// any non-empty text other than "false"/"0"/"no", or any non-zero number,
+// counts as true.
 func boolField(r record, key string) bool {
-	if v, ok := r.Fields[key]; ok {
-		if b, ok := v.(bool); ok {
-			return b
+	v, ok := r.Fields[key]
+	if !ok {
+		return false
+	}
+	switch b := v.(type) {
+	case bool:
+		return b
+	case float64:
+		return b != 0
+	case string:
+		switch strings.ToLower(strings.TrimSpace(b)) {
+		case "", "false", "0", "no":
+			return false
 		}
+		return true
 	}
 	return false
 }

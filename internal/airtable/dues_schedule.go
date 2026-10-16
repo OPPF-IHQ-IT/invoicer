@@ -10,11 +10,11 @@ import (
 )
 
 // ListDuesSchedule returns all dues schedule rows for the given fiscal year label
-// plus rows where FiscalYear == "ALL".
+// plus rows where FiscalYear is "ALL" (case-insensitive, so "All" works too).
 func (c *Client) ListDuesSchedule(ctx context.Context, cfg *config.AirtableConfig, airtableFY string) ([]DuesScheduleRow, error) {
 	f := cfg.Fields.DuesSchedule
 
-	formula := fmt.Sprintf(`OR({%s}="%s",{%s}="ALL")`, f.FiscalYear, airtableFY, f.FiscalYear)
+	formula := fmt.Sprintf(`OR({%s}="%s",UPPER({%s}&"")="ALL")`, f.FiscalYear, airtableFY, f.FiscalYear)
 
 	params := url.Values{}
 	params.Set("filterByFormula", formula)
