@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/fiscal"
@@ -31,6 +32,25 @@ func matchExistingInvoice(invoices []qbo.Invoice, lineHash string, fy fiscal.Yea
 		}
 	}
 	return hashMatches
+}
+
+// matchMemberInvoice finds the invoicer-created invoices for a member in the
+// fiscal year by the Airtable record ID in the invoice's metadata marker,
+// regardless of line hash.
+func matchMemberInvoice(invoices []qbo.Invoice, fy fiscal.Year, airtableRecordID string) []*qbo.Invoice {
+	var matches []*qbo.Invoice
+	for i := range invoices {
+		note := invoices[i].PrivateNote
+		if !strings.HasPrefix(note, invoicerMarkerPrefix) {
+			continue
+		}
+		fields := strings.Fields(note)
+		if slices.Contains(fields, "fiscal_year="+fy.Label) &&
+			slices.Contains(fields, "airtable_record_id="+airtableRecordID) {
+			matches = append(matches, &invoices[i])
+		}
+	}
+	return matches
 }
 
 func invoiceMatchesMarker(inv *qbo.Invoice, fy fiscal.Year, lineHash string) bool {

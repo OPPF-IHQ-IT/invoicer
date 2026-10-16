@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,7 +57,13 @@ func Build(ctx context.Context, cfg *config.Config, fy fiscal.Year, asOf time.Ti
 		return nil, err
 	}
 
-	members, err := atClient.ListInvoiceableMembers(ctx, &cfg.Airtable)
+	// A create run moves members to Invoiced, so sending also has to look
+	// at Invoiced members to find the invoices that are waiting to go out.
+	statuses := cfg.Airtable.InvoiceableStatuses
+	if sendMode {
+		statuses = append(slices.Clone(statuses), cfg.Airtable.StatusValues.Invoiced)
+	}
+	members, err := atClient.ListMembersWithStatus(ctx, &cfg.Airtable, statuses)
 	if err != nil {
 		return nil, fmt.Errorf("loading Airtable members: %w", err)
 	}
@@ -161,9 +168,24 @@ func buildMemberPlan(
 		return mp
 	}
 
-	matched := matchExistingInvoice(existing, calcResult.LineHash, fy)
+	var matched []*qbo.Invoice
+	if sendMode {
+		// Creating an invoice marks the credits it used as spent, so the
+		// line hash recalculated now may no longer match the invoice that
+		// was created. Find the member's invoice by record ID instead.
+		matched = matchMemberInvoice(existing, fy, member.RecordID)
+	}
+	if len(matched) == 0 {
+		matched = matchExistingInvoice(existing, calcResult.LineHash, fy)
+	}
 	switch len(matched) {
 	case 0:
+		if sendMode {
+			mp.Action = ActionSkip
+			mp.SkipReason = "no_invoice_to_send"
+			mp.SkipDetail = fmt.Sprintf("no %s invoice found for customer %s; run --create-only first", fy.Label, customer.ID)
+			return mp
+		}
 		mp.Action = ActionCreate
 	case 1:
 		mp.ExistingInvoice = matched[0]

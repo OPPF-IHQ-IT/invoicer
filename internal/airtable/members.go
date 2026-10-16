@@ -10,10 +10,15 @@ import (
 
 // ListInvoiceableMembers returns members whose Status is in the configured invoiceable list.
 func (c *Client) ListInvoiceableMembers(ctx context.Context, cfg *config.AirtableConfig) ([]Member, error) {
+	return c.ListMembersWithStatus(ctx, cfg, cfg.InvoiceableStatuses)
+}
+
+// ListMembersWithStatus returns members whose Status is any of statuses.
+func (c *Client) ListMembersWithStatus(ctx context.Context, cfg *config.AirtableConfig, statuses []string) ([]Member, error) {
 	f := cfg.Fields.Members
 
-	filterParts := make([]string, 0, len(cfg.InvoiceableStatuses))
-	for _, s := range cfg.InvoiceableStatuses {
+	filterParts := make([]string, 0, len(statuses))
+	for _, s := range statuses {
 		filterParts = append(filterParts, "{"+f.Status+"}=\""+s+"\"")
 	}
 
