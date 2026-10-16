@@ -56,6 +56,7 @@ qbo_items:
   poll_worker_credit: ""
   poll_worker_credit_unit: 50
   international_reinstatement: ""
+  international_undergrad: ""
 
 airtable:
   api_key: "{{ .AirtableAPIKey }}"
@@ -83,6 +84,8 @@ airtable:
     active: "Active"
     no_longer_member: "No Longer in Chi Tau"
 
+  home_chapter: "Chi Tau"
+
   fields:
     members:
       control_number: "Control #"
@@ -96,6 +99,9 @@ airtable:
       basileus_emeritus: "Basileus Emeritus?"
       retired: "Retired?"
       recent_msp: "Recent MSP?"
+      initiation_chapter: "Initiation Chapter"
+      at_large: "At Large?"
+      undergrad_rate: "Undergraduate Rate?"
 
     dues_schedule:
       id: "ID"

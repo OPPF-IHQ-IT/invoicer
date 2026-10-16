@@ -16,7 +16,13 @@ type Member struct {
 	LocalLife        bool
 	BasileusEmeritus bool
 	Retired          bool
-	RecentMSP        bool // prepaid all levels for 3 years; offset applied on all four components
+	RecentMSP        bool // prepaid for 3 years; Intl/District/State always offset, Local only if ChapterInitiate
+	InitiationChapter string
+	// ChapterInitiate is true when InitiationChapter matches the configured
+	// home chapter. It gates the Recent MSP local dues offset.
+	ChapterInitiate bool
+	AtLarge          bool // pays International/District/State elsewhere; invoiced for local dues only
+	UndergradRate    bool // recent undergraduate alumnus; billed the undergraduate International rate
 	// Reclaimable is true when Status == the configured reclaimable status value.
 	// These members are invoiceable but also owe an International Reinstatement fee.
 	Reclaimable bool

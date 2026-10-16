@@ -45,6 +45,7 @@ var testItems = config.QBOItemsConfig{
 	LocalMSPRetiree:               "ITEM_LOCAL_MSP_RET",
 	PollWorkerCredit:           "ITEM_PWC",
 	InternationalReinstatement: "ITEM_REINSTATEMENT",
+	InternationalUndergrad:     "ITEM_INTL_UGRAD",
 }
 
 func activeMember() airtable.Member {
@@ -141,6 +142,7 @@ func TestCalculate_QuadrupleLifeMember(t *testing.T) {
 func TestCalculate_RecentMSPMember(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.ChapterInitiate = true
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
 	})
@@ -168,6 +170,7 @@ func TestCalculate_RecentMSPMember(t *testing.T) {
 func TestCalculate_RecentMSPRetiredMember(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.ChapterInitiate = true
 	m.Retired = true
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
@@ -354,5 +357,164 @@ func TestCalculate_ALLFallback(t *testing.T) {
 	want := 125.00 + 20.00 + 15.00 + 198.00
 	if result.Total != want {
 		t.Errorf("ALL fallback total: got %.2f, want %.2f", result.Total, want)
+	}
+}
+
+func lineItemIDs(result CalculationResult) map[string]float64 {
+	ids := make(map[string]float64)
+	for _, l := range result.Lines {
+		if l.SalesItemLineDetail != nil {
+			ids[l.SalesItemLineDetail.ItemRef.Value] += l.Amount
+		}
+	}
+	return ids
+}
+
+func TestCalculate_AtLargeMemberLocalOnly(t *testing.T) {
+	m := activeMember()
+	m.AtLarge = true
+	m.Reclaimable = true // reinstatement is an International fee, paid elsewhere
+	schedule := append(append([]airtable.DuesScheduleRow{}, testSchedule...),
+		airtable.DuesScheduleRow{FiscalYear: "2025-2026", Level: "International Reinstatement", Amount: 3.00},
+		airtable.DuesScheduleRow{FiscalYear: "2025-2026", Level: "International Late Fee", Amount: 10.00},
+	)
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOfLate, Member: m, Schedule: schedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	want := 198.00 + 20.00 // local + local late fee
+	if result.Total != want {
+		t.Errorf("At-large total: got %.2f, want %.2f", result.Total, want)
+	}
+	ids := lineItemIDs(result)
+	for _, id := range []string{"ITEM_INTL", "ITEM_DIST", "ITEM_STATE", "ITEM_REINSTATEMENT"} {
+		if _, ok := ids[id]; ok {
+			t.Errorf("at-large member should not have line item %s", id)
+		}
+	}
+}
+
+func TestCalculate_AtLargeRetiredWithPollWorkerCredit(t *testing.T) {
+	m := activeMember()
+	m.AtLarge = true
+	m.Retired = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems, PollWorkerCredit: 50,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if want := 98.00 - 50.00; result.Total != want {
+		t.Errorf("At-large retiree total: got %.2f, want %.2f", result.Total, want)
+	}
+}
+
+var undergradSchedule = append(append([]airtable.DuesScheduleRow{}, testSchedule...),
+	airtable.DuesScheduleRow{FiscalYear: "2025-2026", Level: "International (Undergraduate)", Amount: 95.00},
+)
+
+func TestCalculate_UndergradRateMember(t *testing.T) {
+	m := activeMember()
+	m.UndergradRate = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: undergradSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	want := 95.00 + 20.00 + 15.00 + 198.00
+	if result.Total != want {
+		t.Errorf("Undergrad total: got %.2f, want %.2f", result.Total, want)
+	}
+	ids := lineItemIDs(result)
+	if ids["ITEM_INTL_UGRAD"] != 95.00 {
+		t.Errorf("expected ITEM_INTL_UGRAD at 95.00, got %v", ids)
+	}
+	if _, ok := ids["ITEM_INTL"]; ok {
+		t.Error("undergrad-rate member should not have standard ITEM_INTL line")
+	}
+}
+
+func TestCalculate_UndergradRateRecentMSPOffsetsUndergradAmount(t *testing.T) {
+	m := activeMember()
+	m.UndergradRate = true
+	m.RecentMSP = true
+	m.ChapterInitiate = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: undergradSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if result.Total != 0 {
+		t.Errorf("Undergrad MSP total: got %.2f, want 0.00", result.Total)
+	}
+	if got := lineItemIDs(result)["ITEM_INTL_MSP"]; got != -95.00 {
+		t.Errorf("ITEM_INTL_MSP: got %.2f, want -95.00", got)
+	}
+}
+
+func TestCalculate_UndergradRateMissingScheduleSkips(t *testing.T) {
+	m := activeMember()
+	m.UndergradRate = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonDuesScheduleMissing {
+		t.Errorf("SkipReason: got %q, want %q", result.SkipReason, SkipReasonDuesScheduleMissing)
+	}
+}
+
+func TestCalculate_UndergradRateMissingItemSkips(t *testing.T) {
+	m := activeMember()
+	m.UndergradRate = true
+	items := testItems
+	items.InternationalUndergrad = ""
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: undergradSchedule, Items: items,
+	})
+	if result.SkipReason != SkipReasonQBOItemMappingMissing {
+		t.Errorf("SkipReason: got %q, want %q", result.SkipReason, SkipReasonQBOItemMappingMissing)
+	}
+}
+
+func TestCalculate_RecentMSPInitiatedElsewhereOwesLocal(t *testing.T) {
+	m := activeMember()
+	m.RecentMSP = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems, PollWorkerCredit: 50,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	// Intl/District/State offset to $0; local billed in full less poll worker credit.
+	if want := 198.00 - 50.00; result.Total != want {
+		t.Errorf("MSP initiated elsewhere total: got %.2f, want %.2f", result.Total, want)
+	}
+	ids := lineItemIDs(result)
+	for _, id := range []string{"ITEM_INTL_MSP", "ITEM_DIST_MSP", "ITEM_STATE_MSP"} {
+		if _, ok := ids[id]; !ok {
+			t.Errorf("expected MSP offset line item %s, not found", id)
+		}
+	}
+	if _, ok := ids["ITEM_LOCAL_MSP"]; ok {
+		t.Error("MSP initiated elsewhere should not get ITEM_LOCAL_MSP offset")
+	}
+}
+
+func TestCalculate_RecentMSPInitiatedElsewhereRetiredOwesRetireeLocal(t *testing.T) {
+	m := activeMember()
+	m.RecentMSP = true
+	m.Retired = true
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if want := 98.00; result.Total != want {
+		t.Errorf("MSP initiated elsewhere retiree total: got %.2f, want %.2f", result.Total, want)
 	}
 }

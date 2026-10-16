@@ -123,6 +123,7 @@ type QBOItemsConfig struct {
 	PollWorkerCredit           string  `yaml:"poll_worker_credit"`
 	PollWorkerCreditUnit       float64 `yaml:"poll_worker_credit_unit"` // dollar value of one QBO unit (default $50)
 	InternationalReinstatement string  `yaml:"international_reinstatement"`
+	InternationalUndergrad     string  `yaml:"international_undergrad"` // International dues at the undergraduate rate
 }
 
 type AirtableConfig struct {
@@ -133,6 +134,10 @@ type AirtableConfig struct {
 	Fields  AirtableFieldsConfig `yaml:"fields"`
 	InvoiceableStatuses []string `yaml:"invoiceable_statuses"`
 	StatusValues        AirtableStatusValuesConfig `yaml:"status_values"`
+	// HomeChapter is the chapter name compared against each member's
+	// Initiation Chapter. Recent MSPs initiated here get their local dues
+	// offset; those initiated elsewhere owe local dues.
+	HomeChapter string `yaml:"home_chapter"`
 }
 
 type AirtableTablesConfig struct {
@@ -167,6 +172,9 @@ type MembersFieldsConfig struct {
 	BasileusEmeritus string `yaml:"basileus_emeritus"`
 	Retired          string `yaml:"retired"`
 	RecentMSP        string `yaml:"recent_msp"`
+	InitiationChapter string `yaml:"initiation_chapter"`
+	AtLarge          string `yaml:"at_large"`
+	UndergradRate    string `yaml:"undergrad_rate"`
 	AddressLine1     string `yaml:"address_line_1"`
 	AddressLine2     string `yaml:"address_line_2"`
 	City             string `yaml:"city"`
@@ -287,6 +295,18 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Airtable.Fields.Members.RecentMSP == "" {
 		cfg.Airtable.Fields.Members.RecentMSP = "Recent MSP?"
+	}
+	if cfg.Airtable.Fields.Members.InitiationChapter == "" {
+		cfg.Airtable.Fields.Members.InitiationChapter = "Initiation Chapter"
+	}
+	if cfg.Airtable.HomeChapter == "" {
+		cfg.Airtable.HomeChapter = "Chi Tau"
+	}
+	if cfg.Airtable.Fields.Members.AtLarge == "" {
+		cfg.Airtable.Fields.Members.AtLarge = "At Large?"
+	}
+	if cfg.Airtable.Fields.Members.UndergradRate == "" {
+		cfg.Airtable.Fields.Members.UndergradRate = "Undergraduate Rate?"
 	}
 	if cfg.FiscalYear.StartMonth == 0 {
 		cfg.FiscalYear.StartMonth = 11

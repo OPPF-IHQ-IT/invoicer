@@ -3,6 +3,7 @@ package airtable
 import (
 	"context"
 	"net/url"
+	"strings"
 
 	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 )
@@ -102,6 +103,10 @@ func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
 		BasileusEmeritus: boolField(r, f.BasileusEmeritus),
 		Retired:          boolField(r, f.Retired),
 		RecentMSP:        boolField(r, f.RecentMSP),
+		InitiationChapter: stringField(r, f.InitiationChapter),
+		ChapterInitiate:   isHomeChapter(stringField(r, f.InitiationChapter), cfg.HomeChapter),
+		AtLarge:          boolField(r, f.AtLarge),
+		UndergradRate:    boolField(r, f.UndergradRate),
 		Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
 		AddressLine1:     stringField(r, f.AddressLine1),
 		AddressLine2:     stringField(r, f.AddressLine2),
@@ -109,4 +114,13 @@ func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
 		State:            stringField(r, f.State),
 		Zip:              stringField(r, f.Zip),
 	}
+}
+
+// isHomeChapter reports whether a member's initiation chapter is the home
+// chapter. Matching ignores case and surrounding/internal whitespace so
+// "chi tau" and "Chi  Tau" still count; a blank value never matches.
+func isHomeChapter(initiationChapter, homeChapter string) bool {
+	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
+	got := norm(initiationChapter)
+	return got != "" && got == norm(homeChapter)
 }

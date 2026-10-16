@@ -51,6 +51,7 @@ qbo_items:
   poll_worker_credit: ""            # QBO Item ID for Poll Worker Dues Credit
   poll_worker_credit_unit: 50       # Dollar value of one QBO unit for poll worker credit product
   international_reinstatement: ""   # QBO Item ID for International Reinstatement
+  international_undergrad: ""       # QBO Item ID for International dues at the undergraduate rate (recent grads)
 
 airtable:
   # Set AIRTABLE_API_KEY in your environment — never commit this value.
@@ -80,6 +81,11 @@ airtable:
     active: "Active"
     no_longer_member: "No Longer in Chi Tau"
 
+  # Members whose Initiation Chapter matches this (case-insensitive) are chapter
+  # initiates. Recent MSPs initiated here have local dues offset; Recent MSPs
+  # initiated elsewhere still owe local dues.
+  home_chapter: "Chi Tau"
+
   fields:
     members:
       control_number: "Control #"
@@ -94,6 +100,9 @@ airtable:
       basileus_emeritus: "Basileus Emeritus?"
       retired: "Retired?"
       recent_msp: "Recent MSP?"
+      initiation_chapter: "Initiation Chapter" # text or single-select; compared to home_chapter below
+      at_large: "At Large?"             # checked = pays Intl/District/State elsewhere; invoiced for local dues only
+      undergrad_rate: "Undergraduate Rate?" # checked = billed the "International (Undergraduate)" dues schedule level
       address_line_1: "Address Line 1"
       address_line_2: "Address Line 2"
       city: "City"

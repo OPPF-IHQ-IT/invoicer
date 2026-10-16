@@ -2,6 +2,24 @@ package airtable
 
 import "testing"
 
+func TestIsHomeChapter(t *testing.T) {
+	cases := []struct {
+		got, home string
+		want      bool
+	}{
+		{"Chi Tau", "Chi Tau", true},
+		{"  chi   TAU ", "Chi Tau", true},
+		{"Alpha", "Chi Tau", false},
+		{"", "Chi Tau", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		if got := isHomeChapter(c.got, c.home); got != c.want {
+			t.Errorf("isHomeChapter(%q, %q) = %v, want %v", c.got, c.home, got, c.want)
+		}
+	}
+}
+
 func TestBoolField(t *testing.T) {
 	r := record{Fields: map[string]any{
 		"checkbox":     true,

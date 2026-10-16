@@ -37,15 +37,56 @@ func (l lineItem) toQBOLine() qbo.InvoiceLine {
 
 // buildLineItems constructs the full set of invoice line items for a member.
 // It applies life membership offsets, BE offsets, retiree rate, and poll worker credits.
+// At-large members pay International, District, and State elsewhere, so they
+// are invoiced for the local components only.
 func buildLineItems(input CalculationInput, schedule scheduleMap, items config.QBOItemsConfig) ([]lineItem, SkipReason) {
 	var lines []lineItem
 
-	// International
-	intl, ok := schedule.resolve("International")
+	if !input.Member.AtLarge {
+		upper, skip := buildUpperLevelLines(input, schedule, items)
+		if skip != SkipReasonNone {
+			return nil, skip
+		}
+		lines = append(lines, upper...)
+	}
+
+	// Local — priority: BE > LocalLife > Recent MSP (chapter initiate) > Retired > Standard
+	localLines, skip := buildLocalLines(input, schedule, items)
+	if skip != SkipReasonNone {
+		return nil, skip
+	}
+	lines = append(lines, localLines...)
+
+	// Late fee
+	if input.FY.IsLate(input.AsOf) {
+		if lateFee, ok := schedule.resolve("Local Late Fee"); ok {
+			lines = append(lines, lineItem{ItemID: items.LocalLateFee, Description: "Local Late Fee", Amount: lateFee.Amount})
+		}
+	}
+
+	return lines, SkipReasonNone
+}
+
+// buildUpperLevelLines constructs the International, District, and State line
+// items (dues, offsets, late fees, and International Reinstatement).
+func buildUpperLevelLines(input CalculationInput, schedule scheduleMap, items config.QBOItemsConfig) ([]lineItem, SkipReason) {
+	var lines []lineItem
+
+	// International — recent undergraduate alumni are billed the undergraduate
+	// rate against a distinct QBO product. Offsets below cancel whichever
+	// rate was charged.
+	intlLevel, intlItem, intlDesc := "International", items.International, "International Dues"
+	if input.Member.UndergradRate {
+		if items.InternationalUndergrad == "" {
+			return nil, SkipReasonQBOItemMappingMissing
+		}
+		intlLevel, intlItem, intlDesc = "International (Undergraduate)", items.InternationalUndergrad, "International Dues (Undergraduate Rate)"
+	}
+	intl, ok := schedule.resolve(intlLevel)
 	if !ok {
 		return nil, SkipReasonDuesScheduleMissing
 	}
-	lines = append(lines, lineItem{ItemID: items.International, Description: "International Dues", Amount: intl.Amount})
+	lines = append(lines, lineItem{ItemID: intlItem, Description: intlDesc, Amount: intl.Amount})
 	switch {
 	case input.Member.IntlLife:
 		if items.InternationalLifeMember == "" {
@@ -122,20 +163,6 @@ func buildLineItems(input CalculationInput, schedule scheduleMap, items config.Q
 		}
 	}
 
-	// Local — priority: BE > LocalLife > Retired > Standard
-	localLines, skip := buildLocalLines(input, schedule, items)
-	if skip != SkipReasonNone {
-		return nil, skip
-	}
-	lines = append(lines, localLines...)
-
-	// Late fee
-	if input.FY.IsLate(input.AsOf) {
-		if lateFee, ok := schedule.resolve("Local Late Fee"); ok {
-			lines = append(lines, lineItem{ItemID: items.LocalLateFee, Description: "Local Late Fee", Amount: lateFee.Amount})
-		}
-	}
-
 	return lines, SkipReasonNone
 }
 
@@ -193,7 +220,10 @@ func buildLocalLines(input CalculationInput, schedule scheduleMap, items config.
 			{ItemID: items.LocalLifeMember, Description: "Local Life Membership", Amount: -local.Amount},
 		}, SkipReasonNone
 
-	case input.Member.RecentMSP:
+	// The MSP prepayment covers local dues only for brothers initiated here.
+	// MSPs initiated elsewhere are establishing a new relationship with the
+	// chapter and owe local dues like any other member.
+	case input.Member.RecentMSP && input.Member.ChapterInitiate:
 		if input.Member.Retired {
 			retiree, ok := schedule.resolve("Local (Retiree)")
 			if !ok {

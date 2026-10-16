@@ -42,6 +42,7 @@ var components = []component{
 	{Label: "Recent MSP offset — Local (retiree)", ConfigKey: "local_msp_retiree", Optional: true},
 	{Label: "Poll Worker Dues Credit", ConfigKey: "poll_worker_credit", Optional: true},
 	{Label: "International Reinstatement", ConfigKey: "international_reinstatement", Optional: true},
+	{Label: "International Dues (Undergraduate Rate)", ConfigKey: "international_undergrad", Optional: true},
 }
 
 // RunItems fetches QBO products and walks through mapping each dues component interactively.
