@@ -75,21 +75,80 @@ func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 }
 
+var errAuthExpired = fmt.Errorf("QBO authentication expired; run 'invoicer auth login' to re-authenticate")
+
+// tokenRefreshSkew refreshes slightly before expiry so a request doesn't race it.
+const tokenRefreshSkew = time.Minute
+
 func (c *Client) do(req *http.Request) ([]byte, error) {
-	resp, err := c.http.Do(req)
+	if time.Now().Add(tokenRefreshSkew).Unix() >= c.token.ExpiresAt {
+		if err := c.refreshToken(req.Context()); err != nil {
+			return nil, err
+		}
+		c.setHeaders(req)
+	}
+
+	body, status, err := c.send(req)
 	if err != nil {
 		return nil, err
 	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("QBO authentication expired; run 'invoicer auth' to re-authenticate")
+	// A 401 can still happen if the token was revoked or the clock is off:
+	// refresh once and retry the same request.
+	if status == http.StatusUnauthorized {
+		if err := c.refreshToken(req.Context()); err != nil {
+			return nil, err
+		}
+		retry, err := cloneRequest(req)
+		if err != nil {
+			return nil, err
+		}
+		c.setHeaders(retry)
+		body, status, err = c.send(retry)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusUnauthorized {
+			return nil, errAuthExpired
+		}
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("QBO %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, sanitizeBody(body))
+
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("QBO %s %s: status %d: %s", req.Method, req.URL.Path, status, sanitizeBody(body))
 	}
 	return body, nil
+}
+
+func (c *Client) send(req *http.Request) ([]byte, int, error) {
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	return body, resp.StatusCode, nil
+}
+
+func (c *Client) refreshToken(ctx context.Context) error {
+	tok, err := refreshAccessToken(ctx, c.cfg, c.token)
+	if err != nil {
+		return fmt.Errorf("%w (refresh failed: %v)", errAuthExpired, err)
+	}
+	c.token = tok
+	return nil
+}
+
+// cloneRequest copies req for a retry, rewinding its body.
+func cloneRequest(req *http.Request) (*http.Request, error) {
+	retry := req.Clone(req.Context())
+	if req.Body != nil && req.GetBody != nil {
+		body, err := req.GetBody()
+		if err != nil {
+			return nil, err
+		}
+		retry.Body = body
+	}
+	return retry, nil
 }
 
 // sanitizeBody removes potential token values from error bodies before logging.

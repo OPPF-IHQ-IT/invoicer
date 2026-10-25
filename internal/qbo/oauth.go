@@ -18,10 +18,12 @@ import (
 )
 
 const (
-	authURL  = "https://appcenter.intuit.com/connect/oauth2"
-	tokenURL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
-	scope    = "com.intuit.quickbooks.accounting"
+	authURL = "https://appcenter.intuit.com/connect/oauth2"
+	scope   = "com.intuit.quickbooks.accounting"
 )
+
+// tokenURL is a variable so tests can point it at a local server.
+var tokenURL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
 // RunOAuthFlow starts the localhost loopback OAuth 2.0 flow for QBO.
 func RunOAuthFlow(ctx context.Context, cfg *config.Config) error {
@@ -92,39 +94,13 @@ type callbackResult struct {
 }
 
 func exchangeCode(ctx context.Context, cfg *config.Config, code, realmID, redirectURI string) error {
-	body := url.Values{
+	tokenResp, err := requestToken(ctx, cfg, url.Values{
 		"grant_type":   {"authorization_code"},
 		"code":         {code},
 		"redirect_uri": {redirectURI},
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(body.Encode()))
+	})
 	if err != nil {
 		return err
-	}
-	req.SetBasicAuth(cfg.QBO.ClientID, cfg.QBO.ClientSecret)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("token exchange request failed: %w", err)
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("token exchange failed (status %d)", resp.StatusCode)
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		TokenType    string `json:"token_type"`
-		ExpiresIn    int    `json:"expires_in"`
-	}
-	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
-		return fmt.Errorf("parsing token response: %w", err)
 	}
 
 	tok := &storage.Token{
@@ -142,6 +118,73 @@ func exchangeCode(ctx context.Context, cfg *config.Config, code, realmID, redire
 	return nil
 }
 
+// refreshAccessToken trades the stored refresh token for a new access token and
+// saves it. Intuit access tokens last about an hour; refresh tokens last about
+// 100 days, so a refresh avoids sending the user back through the browser flow.
+func refreshAccessToken(ctx context.Context, cfg *config.Config, tok *storage.Token) (*storage.Token, error) {
+	if tok.RefreshToken == "" {
+		return nil, fmt.Errorf("no refresh token stored")
+	}
+	tokenResp, err := requestToken(ctx, cfg, url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {tok.RefreshToken},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	refreshed := &storage.Token{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		TokenType:    tokenResp.TokenType,
+		ExpiresAt:    time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Unix(),
+		RealmID:      tok.RealmID,
+	}
+	// Intuit may rotate the refresh token; keep the old one if none came back.
+	if refreshed.RefreshToken == "" {
+		refreshed.RefreshToken = tok.RefreshToken
+	}
+	if err := storage.SaveToken(cfg, refreshed); err != nil {
+		return nil, fmt.Errorf("saving refreshed token: %w", err)
+	}
+	return refreshed, nil
+}
+
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+}
+
+// requestToken posts a grant to Intuit's token endpoint.
+func requestToken(ctx context.Context, cfg *config.Config, form url.Values) (*tokenResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(cfg.QBO.ClientID, cfg.QBO.ClientSecret)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token request failed (status %d)", resp.StatusCode)
+	}
+
+	var tokenResp tokenResponse
+	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
+		return nil, fmt.Errorf("parsing token response: %w", err)
+	}
+	return &tokenResp, nil
+}
+
 // ShowAuthStatus prints the current authentication status.
 func ShowAuthStatus(cfg *config.Config) error {
 	tok, err := storage.LoadToken(cfg)
@@ -154,6 +197,9 @@ func ShowAuthStatus(cfg *config.Config) error {
 	status := "valid"
 	if time.Now().After(expires) {
 		status = "expired"
+		if tok.RefreshToken != "" {
+			status = "expired (refreshes automatically on next use)"
+		}
 	}
 	fmt.Printf("Status: authenticated\nRealm ID: %s\nToken: %s\nExpires: %s\n",
 		tok.RealmID, status, expires.Format(time.RFC3339))
