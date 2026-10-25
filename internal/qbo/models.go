@@ -65,6 +65,8 @@ type InvoiceCreateRequest struct {
 	PrivateNote  string
 	CustomerMemo string
 	BillEmail    string // populates Invoice.BillEmail; required for /send to deliver without sendTo
+	BillEmailCc  string // defaults to the company's Sales form CC setting when both copies are blank
+	BillEmailBcc string // defaults to the company's Sales form BCC / "email me a copy" setting
 	SalesTermID  string // QBO Term entity ID; populates the invoice "Terms" dropdown
 	Line         []InvoiceLine
 }

@@ -2,6 +2,7 @@ package qbo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -125,5 +126,97 @@ func TestRefreshFailureAsksForLogin(t *testing.T) {
 	}
 	if f.apiCalls != 0 {
 		t.Errorf("apiCalls=%d, want 0 when the refresh fails", f.apiCalls)
+	}
+}
+
+// fakeCompany serves the Sales form email settings and records invoice payloads.
+type fakeCompany struct {
+	prefsStatus  int    // status for /preferences; 0 means 200
+	prefs        string // Preferences JSON
+	companyEmail string
+	prefsCalls   int
+	invoices     []map[string]any
+}
+
+func (f *fakeCompany) handler(t *testing.T) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/preferences"):
+			f.prefsCalls++
+			if f.prefsStatus != 0 {
+				w.WriteHeader(f.prefsStatus)
+				return
+			}
+			io.WriteString(w, f.prefs)
+		case strings.Contains(r.URL.Path, "/companyinfo/"):
+			io.WriteString(w, `{"CompanyInfo":{"Email":{"Address":"`+f.companyEmail+`"}}}`)
+		case strings.HasSuffix(r.URL.Path, "/invoice"):
+			var p map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+				t.Fatalf("decoding invoice payload: %v", err)
+			}
+			f.invoices = append(f.invoices, p)
+			io.WriteString(w, `{"Invoice":{"Id":"1"}}`)
+		default:
+			t.Errorf("unexpected request %s", r.URL.Path)
+		}
+	})
+}
+
+func newCompanyClient(t *testing.T, f *fakeCompany) *Client {
+	t.Helper()
+	srv := httptest.NewServer(f.handler(t))
+	t.Cleanup(srv.Close)
+	cfg := &config.Config{}
+	cfg.QBO.Environment = "sandbox"
+	cfg.QBO.SandboxBaseURL = srv.URL
+	tok := &storage.Token{AccessToken: "ok", ExpiresAt: time.Now().Add(time.Hour).Unix(), RealmID: "123"}
+	return &Client{cfg: cfg, token: tok, http: srv.Client(), realmID: "123"}
+}
+
+func emailField(p map[string]any, key string) string {
+	m, _ := p[key].(map[string]any)
+	s, _ := m["Address"].(string)
+	return s
+}
+
+func TestCreateInvoiceCopiesSalesFormEmails(t *testing.T) {
+	f := &fakeCompany{
+		prefs:        `{"Preferences":{"SalesFormsPrefs":{"SalesEmailCc":{"Address":"kf@example.org"},"EmailCopyToCompany":true}}}`,
+		companyEmail: "krs@example.org",
+	}
+	c := newCompanyClient(t, f)
+
+	for i := 0; i < 2; i++ {
+		if _, err := c.CreateInvoice(context.Background(), InvoiceCreateRequest{BillEmail: "brother@example.org"}); err != nil {
+			t.Fatalf("CreateInvoice: %v", err)
+		}
+	}
+	for _, p := range f.invoices {
+		if got := emailField(p, "BillEmailCc"); got != "kf@example.org" {
+			t.Errorf("BillEmailCc = %q, want the Sales form CC", got)
+		}
+		if got := emailField(p, "BillEmailBcc"); got != "krs@example.org" {
+			t.Errorf("BillEmailBcc = %q, want the company email", got)
+		}
+	}
+	if f.prefsCalls != 1 {
+		t.Errorf("preferences fetched %d times, want once per client", f.prefsCalls)
+	}
+}
+
+func TestCreateInvoiceFailsOpenWithoutSettings(t *testing.T) {
+	f := &fakeCompany{prefsStatus: http.StatusInternalServerError}
+	c := newCompanyClient(t, f)
+
+	if _, err := c.CreateInvoice(context.Background(), InvoiceCreateRequest{BillEmail: "brother@example.org"}); err != nil {
+		t.Fatalf("CreateInvoice should not fail when settings are unreadable: %v", err)
+	}
+	p := f.invoices[0]
+	if _, ok := p["BillEmailCc"]; ok {
+		t.Errorf("BillEmailCc set to %v, want no one copied", p["BillEmailCc"])
+	}
+	if _, ok := p["BillEmailBcc"]; ok {
+		t.Errorf("BillEmailBcc set to %v, want no one copied", p["BillEmailBcc"])
 	}
 }

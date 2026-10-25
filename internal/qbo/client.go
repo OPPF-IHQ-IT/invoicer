@@ -21,6 +21,7 @@ type Client struct {
 	token   *storage.Token
 	http    *http.Client
 	realmID string
+	copies  *emailCopies // cached Sales form CC/BCC settings; see salesEmailCopies
 }
 
 func NewClient(cfg *config.Config) (*Client, error) {
@@ -365,6 +366,10 @@ func (c *Client) QueryInvoices(ctx context.Context, customerID string, periodSta
 
 // CreateInvoice creates a new invoice in QBO.
 func (c *Client) CreateInvoice(ctx context.Context, req InvoiceCreateRequest) (*Invoice, error) {
+	if req.BillEmailCc == "" && req.BillEmailBcc == "" {
+		copies := c.salesEmailCopies(ctx)
+		req.BillEmailCc, req.BillEmailBcc = copies.cc, copies.bcc
+	}
 	payload := buildInvoicePayload(req)
 	body, err := c.post(ctx, "invoice", payload)
 	if err != nil {
@@ -502,6 +507,12 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]any {
 	}
 	if req.BillEmail != "" {
 		payload["BillEmail"] = map[string]any{"Address": req.BillEmail}
+	}
+	if req.BillEmailCc != "" {
+		payload["BillEmailCc"] = map[string]any{"Address": req.BillEmailCc}
+	}
+	if req.BillEmailBcc != "" {
+		payload["BillEmailBcc"] = map[string]any{"Address": req.BillEmailBcc}
 	}
 	if req.SalesTermID != "" {
 		payload["SalesTermRef"] = map[string]any{"value": req.SalesTermID}
