@@ -323,14 +323,6 @@ All Airtable table names, field names, and QBO item IDs are configurable so any 
 
 ---
 
-## Support
-
-If `invoicer` saves you time and you'd like to show some love, consider supporting the author:
-
-[![Support on Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon)](https://www.patreon.com/wmadisondev)
-
----
-
 ## License
 
 MIT
