@@ -21,6 +21,10 @@ func SendInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan) (
 
 	for i := range plan.MemberPlans {
 		mp := &plan.MemberPlans[i]
+		if mp.Action == planner.ActionSendReceipt {
+			sendReceipt(ctx, qboClient, mp)
+			continue
+		}
 		if mp.Action != planner.ActionSend {
 			continue
 		}
@@ -61,4 +65,27 @@ func SendInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan) (
 	}
 
 	return &Result{Plan: plan, RunID: runID}, nil
+}
+
+// sendReceipt emails a $0 member's sales receipt.
+func sendReceipt(ctx context.Context, qboClient *qbo.Client, mp *planner.MemberPlan) {
+	fresh, err := qboClient.GetSalesReceipt(ctx, mp.ExistingReceipt.ID)
+	if err != nil {
+		mp.Action = planner.ActionError
+		mp.SkipDetail = fmt.Sprintf("re-fetching sales receipt %s: %v", mp.ExistingReceipt.ID, err)
+		return
+	}
+	if fresh.EmailStatus == "EmailSent" {
+		mp.Action = planner.ActionNoChange
+		return
+	}
+	if mp.QBOCustomer != nil && mp.QBOCustomer.Email == "" {
+		mp.Action = planner.ActionSkip
+		mp.SkipReason = "missing_email"
+		return
+	}
+	if err := qboClient.SendSalesReceipt(ctx, mp.ExistingReceipt.ID); err != nil {
+		mp.Action = planner.ActionError
+		mp.SkipDetail = fmt.Sprintf("sending sales receipt %s: %v", mp.ExistingReceipt.ID, err)
+	}
 }

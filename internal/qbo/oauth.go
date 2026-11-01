@@ -198,7 +198,7 @@ func ShowAuthStatus(cfg *config.Config) error {
 	if time.Now().After(expires) {
 		status = "expired"
 		if tok.RefreshToken != "" {
-			status = "expired (refreshes automatically on next use)"
+			status = "expired (refreshes on next use if used in the last 100 days; otherwise run 'invoicer auth login --env production')"
 		}
 	}
 	fmt.Printf("Status: authenticated\nRealm ID: %s\nToken: %s\nExpires: %s\n",

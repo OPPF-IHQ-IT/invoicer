@@ -43,6 +43,10 @@ dist/
 /invoicer
 cmd/invoicer/invoicer
 
+# Run output (contains member data)
+fy*-create.json
+fy*-send.json
+
 # Reconciliation output CSVs
 *.csv
 !testdata/*.csv

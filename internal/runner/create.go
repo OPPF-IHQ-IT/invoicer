@@ -34,30 +34,53 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 
 	for i := range plan.MemberPlans {
 		mp := &plan.MemberPlans[i]
-		if mp.Action != planner.ActionCreate {
+		if mp.Action != planner.ActionCreate && mp.Action != planner.ActionCreateReceipt {
 			continue
 		}
 
 		privateNote := planner.BuildPrivateNote(plan.FY, mp.Member.RecordID, mp.CalcResult.LineHash, runID)
 
-		inv, err := qboClient.CreateInvoice(ctx, qbo.InvoiceCreateRequest{
-			CustomerRef:  qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
-			DocNumber:    nextDocNumber,
-			TxnDate:      mp.InvoiceDate,
-			DueDate:      mp.DueDate,
-			PrivateNote:  privateNote,
-			CustomerMemo: cfg.Invoice.CustomerMemo,
-			BillEmail:    mp.QBOCustomer.Email,
-			SalesTermID:  cfg.Invoice.SalesTermID,
-			Line:         mp.CalcResult.Lines,
-		})
-		if err != nil {
-			mp.Action = planner.ActionError
-			mp.SkipDetail = fmt.Sprintf("creating QBO invoice: %v", err)
-			continue
+		var docID string
+		if mp.Action == planner.ActionCreateReceipt {
+			// Members who owe nothing get a receipt, not a $0 invoice.
+			sr, err := qboClient.CreateSalesReceipt(ctx, qbo.SalesReceiptCreateRequest{
+				CustomerRef:      qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
+				DocNumber:        nextDocNumber,
+				TxnDate:          mp.InvoiceDate,
+				PrivateNote:      privateNote,
+				CustomerMemo:     cfg.Invoice.CustomerMemo,
+				BillEmail:        mp.QBOCustomer.Email,
+				DepositAccountID: cfg.Invoice.SalesReceiptDepositAccountID,
+				Line:             mp.CalcResult.Lines,
+			})
+			if err != nil {
+				mp.Action = planner.ActionError
+				mp.SkipDetail = fmt.Sprintf("creating QBO sales receipt: %v", err)
+				continue
+			}
+			mp.ExistingReceipt = sr
+			docID = sr.ID
+		} else {
+			inv, err := qboClient.CreateInvoice(ctx, qbo.InvoiceCreateRequest{
+				CustomerRef:  qbo.CustomerRef{Value: mp.QBOCustomer.ID, Name: mp.QBOCustomer.DisplayName},
+				DocNumber:    nextDocNumber,
+				TxnDate:      mp.InvoiceDate,
+				DueDate:      mp.DueDate,
+				PrivateNote:  privateNote,
+				CustomerMemo: cfg.Invoice.CustomerMemo,
+				BillEmail:    mp.QBOCustomer.Email,
+				SalesTermID:  cfg.Invoice.SalesTermID,
+				Line:         mp.CalcResult.Lines,
+			})
+			if err != nil {
+				mp.Action = planner.ActionError
+				mp.SkipDetail = fmt.Sprintf("creating QBO invoice: %v", err)
+				continue
+			}
+			mp.ExistingInvoice = inv
+			docID = inv.ID
 		}
 
-		mp.ExistingInvoice = inv
 		nextDocNumber = qbo.IncrementDocNumber(nextDocNumber)
 
 		// Update Airtable member status.
@@ -67,7 +90,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 		}
 		if err := atClient.UpdateMemberStatus(ctx, &cfg.Airtable, mp.Member.RecordID, newStatus); err != nil {
 			// Non-fatal: log but don't fail the whole run.
-			mp.SkipDetail = fmt.Sprintf("invoice created (%s) but Airtable status update failed: %v", inv.ID, err)
+			mp.SkipDetail = fmt.Sprintf("document created (%s) but Airtable status update failed: %v", docID, err)
 		}
 
 		// Consume poll worker credits if any were applied.

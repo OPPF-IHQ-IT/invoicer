@@ -23,6 +23,9 @@ const (
 	ActionSend          Action = "SEND"
 	ActionSkip          Action = "SKIP"
 	ActionError         Action = "ERROR"
+	// $0 members get a sales receipt instead of an invoice.
+	ActionCreateReceipt Action = "CREATE_RECEIPT"
+	ActionSendReceipt   Action = "SEND_RECEIPT"
 	ActionVoidCandidate Action = "VOID_CANDIDATE"
 )
 
@@ -35,6 +38,7 @@ type MemberPlan struct {
 	SkipDetail      string
 	CalcResult      *invoicecalc.CalculationResult
 	ExistingInvoice *qbo.Invoice
+	ExistingReceipt *qbo.SalesReceipt
 	InvoiceDate     string
 	DueDate         string
 }
@@ -58,10 +62,11 @@ func Build(ctx context.Context, cfg *config.Config, fy fiscal.Year, asOf time.Ti
 	}
 
 	// A create run moves members to Invoiced, so sending also has to look
-	// at Invoiced members to find the invoices that are waiting to go out.
+	// at Invoiced members to find the invoices that are waiting to go out,
+	// and at Active members, who may have a $0 receipt waiting.
 	statuses := cfg.Airtable.InvoiceableStatuses
 	if sendMode {
-		statuses = append(slices.Clone(statuses), cfg.Airtable.StatusValues.Invoiced)
+		statuses = append(slices.Clone(statuses), cfg.Airtable.StatusValues.Invoiced, cfg.Airtable.StatusValues.Active)
 	}
 	members, err := atClient.ListMembersWithStatus(ctx, &cfg.Airtable, statuses)
 	if err != nil {
@@ -120,6 +125,13 @@ func buildMemberPlan(
 
 	// Resolve QBO customer.
 	customer, skipReason, detail := resolveCustomer(member, customerIndex, cfg.Invoice.AllowNameFallbackInRun)
+	// An Active member can only have a $0 receipt to send. Anything else about
+	// them, such as a missing customer, isn't this run's concern.
+	active := sendMode && member.Status == cfg.Airtable.StatusValues.Active
+	if active && skipReason != invoicecalc.SkipReasonNone {
+		mp.Action = ActionNoChange
+		return mp
+	}
 	if skipReason != invoicecalc.SkipReasonNone {
 		mp.Action = ActionSkip
 		mp.SkipReason = skipReason
@@ -127,6 +139,11 @@ func buildMemberPlan(
 		return mp
 	}
 	mp.QBOCustomer = customer
+
+	if active {
+		planReceiptSend(ctx, qboClient, fy, &mp)
+		return mp
+	}
 
 	// Load poll worker credits (sum all available across all FYs, FIFO).
 	credits, err := atClient.ListPollWorkerCredits(ctx, &cfg.Airtable, member.RecordID)
@@ -181,9 +198,17 @@ func buildMemberPlan(
 	switch len(matched) {
 	case 0:
 		if sendMode {
-			mp.Action = ActionSkip
-			mp.SkipReason = "no_invoice_to_send"
-			mp.SkipDetail = fmt.Sprintf("no %s invoice found for customer %s; run --create-only first", fy.Label, customer.ID)
+			// A $0 member whose status update failed still has a receipt to send.
+			planReceiptSend(ctx, qboClient, fy, &mp)
+			if mp.Action == ActionNoChange && mp.ExistingReceipt == nil {
+				mp.Action = ActionSkip
+				mp.SkipReason = "no_invoice_to_send"
+				mp.SkipDetail = fmt.Sprintf("no %s invoice found for customer %s; run --create-only first", fy.Label, customer.ID)
+			}
+			return mp
+		}
+		if calcResult.IsZeroTotal {
+			planReceiptCreate(ctx, qboClient, fy, &mp)
 			return mp
 		}
 		mp.Action = ActionCreate
@@ -206,6 +231,67 @@ func buildMemberPlan(
 	}
 
 	return mp
+}
+
+// memberReceipts returns the member's invoicer-created receipts for the fiscal year.
+func memberReceipts(ctx context.Context, qboClient *qbo.Client, fy fiscal.Year, mp *MemberPlan) ([]*qbo.SalesReceipt, error) {
+	receipts, err := qboClient.QuerySalesReceipts(ctx, mp.QBOCustomer.ID, fy.PeriodStart, fy.PeriodEnd)
+	if err != nil {
+		return nil, fmt.Errorf("querying QBO sales receipts: %w", err)
+	}
+	return matchMemberReceipt(receipts, fy, mp.Member.RecordID), nil
+}
+
+// planReceiptCreate decides whether a $0 member needs a sales receipt.
+func planReceiptCreate(ctx context.Context, qboClient *qbo.Client, fy fiscal.Year, mp *MemberPlan) {
+	matched, err := memberReceipts(ctx, qboClient, fy, mp)
+	if err != nil {
+		mp.Action = ActionError
+		mp.SkipDetail = err.Error()
+		return
+	}
+	mp.Action, mp.SkipReason, mp.SkipDetail = receiptCreateAction(matched)
+	if len(matched) == 1 {
+		mp.ExistingReceipt = matched[0]
+	}
+}
+
+func receiptCreateAction(matched []*qbo.SalesReceipt) (Action, invoicecalc.SkipReason, string) {
+	switch len(matched) {
+	case 0:
+		return ActionCreateReceipt, invoicecalc.SkipReasonNone, ""
+	case 1:
+		return ActionNoChange, invoicecalc.SkipReasonNone, ""
+	default:
+		return ActionSkip, "duplicate_receipt_conflict", fmt.Sprintf("%d sales receipts found for this fiscal year", len(matched))
+	}
+}
+
+// planReceiptSend decides whether a member has a sales receipt to email.
+func planReceiptSend(ctx context.Context, qboClient *qbo.Client, fy fiscal.Year, mp *MemberPlan) {
+	matched, err := memberReceipts(ctx, qboClient, fy, mp)
+	if err != nil {
+		mp.Action = ActionError
+		mp.SkipDetail = err.Error()
+		return
+	}
+	mp.Action, mp.SkipReason, mp.SkipDetail = receiptSendAction(matched)
+	if len(matched) == 1 {
+		mp.ExistingReceipt = matched[0]
+	}
+}
+
+func receiptSendAction(matched []*qbo.SalesReceipt) (Action, invoicecalc.SkipReason, string) {
+	switch {
+	case len(matched) == 0:
+		return ActionNoChange, invoicecalc.SkipReasonNone, ""
+	case len(matched) > 1:
+		return ActionSkip, "duplicate_receipt_conflict", fmt.Sprintf("%d sales receipts found for this fiscal year", len(matched))
+	case matched[0].EmailStatus == "EmailSent":
+		return ActionNoChange, invoicecalc.SkipReasonNone, ""
+	default:
+		return ActionSendReceipt, invoicecalc.SkipReasonNone, ""
+	}
 }
 
 func canSend(inv *qbo.Invoice) bool {

@@ -205,7 +205,9 @@ invoicer run --fiscal-year FY2026 --send
 invoicer run --fiscal-year FY2026 --create-only --env sandbox
 ```
 
-For the full start-of-year checklist (preparation, run day, skip reasons), see [docs/annual-dues-run.md](docs/annual-dues-run.md).
+Members who owe $0 get a sales receipt with the same lines instead of an invoice, as confirmation that they're fully financial.
+
+For the full start-of-year checklist (setup, preparation, run day, skip reasons), see [docs/annual-dues-run.md](docs/annual-dues-run.md).
 
 ---
 

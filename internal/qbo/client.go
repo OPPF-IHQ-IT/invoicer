@@ -161,31 +161,38 @@ func sanitizeBody(b []byte) string {
 	return s
 }
 
-// NextInvoiceNumber queries the 100 most recent invoices, finds the numerically
-// largest DocNumber, and returns an incremented version preserving any prefix and zero-padding.
+// NextInvoiceNumber queries the 100 most recent invoices and sales receipts,
+// which share a number sequence, finds the numerically largest DocNumber, and
+// returns an incremented version preserving any prefix and zero-padding.
 func (c *Client) NextInvoiceNumber(ctx context.Context) (string, error) {
-	q := "SELECT * FROM Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 100"
-	body, err := c.query(ctx, q)
-	if err != nil {
-		return "", err
-	}
-
-	var result struct {
-		QueryResponse struct {
-			Invoice []map[string]any `json:"Invoice"`
-		} `json:"QueryResponse"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", err
-	}
-
 	var maxNum int
 	var bestDoc string
-	for _, raw := range result.QueryResponse.Invoice {
-		doc := stringVal(raw, "DocNumber")
-		if n := trailingInt(doc); n > maxNum {
-			maxNum = n
-			bestDoc = doc
+	for _, entity := range []string{"Invoice", "SalesReceipt"} {
+		q := "SELECT * FROM " + entity + " ORDERBY MetaData.CreateTime DESC MAXRESULTS 100"
+		body, err := c.query(ctx, q)
+		if err != nil {
+			return "", err
+		}
+
+		var result struct {
+			QueryResponse map[string]json.RawMessage `json:"QueryResponse"`
+		}
+		if err := json.Unmarshal(body, &result); err != nil {
+			return "", err
+		}
+		var docs []map[string]any
+		if raw, ok := result.QueryResponse[entity]; ok {
+			if err := json.Unmarshal(raw, &docs); err != nil {
+				return "", err
+			}
+		}
+
+		for _, raw := range docs {
+			doc := stringVal(raw, "DocNumber")
+			if n := trailingInt(doc); n > maxNum {
+				maxNum = n
+				bestDoc = doc
+			}
 		}
 	}
 

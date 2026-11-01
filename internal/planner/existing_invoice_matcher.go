@@ -40,17 +40,32 @@ func matchExistingInvoice(invoices []qbo.Invoice, lineHash string, fy fiscal.Yea
 func matchMemberInvoice(invoices []qbo.Invoice, fy fiscal.Year, airtableRecordID string) []*qbo.Invoice {
 	var matches []*qbo.Invoice
 	for i := range invoices {
-		note := invoices[i].PrivateNote
-		if !strings.HasPrefix(note, invoicerMarkerPrefix) {
-			continue
-		}
-		fields := strings.Fields(note)
-		if slices.Contains(fields, "fiscal_year="+fy.Label) &&
-			slices.Contains(fields, "airtable_record_id="+airtableRecordID) {
+		if noteMatchesMember(invoices[i].PrivateNote, fy, airtableRecordID) {
 			matches = append(matches, &invoices[i])
 		}
 	}
 	return matches
+}
+
+// matchMemberReceipt finds the invoicer-created sales receipts for a member in
+// the fiscal year by the Airtable record ID in the receipt's metadata marker.
+func matchMemberReceipt(receipts []qbo.SalesReceipt, fy fiscal.Year, airtableRecordID string) []*qbo.SalesReceipt {
+	var matches []*qbo.SalesReceipt
+	for i := range receipts {
+		if noteMatchesMember(receipts[i].PrivateNote, fy, airtableRecordID) {
+			matches = append(matches, &receipts[i])
+		}
+	}
+	return matches
+}
+
+func noteMatchesMember(note string, fy fiscal.Year, airtableRecordID string) bool {
+	if !strings.HasPrefix(note, invoicerMarkerPrefix) {
+		return false
+	}
+	fields := strings.Fields(note)
+	return slices.Contains(fields, "fiscal_year="+fy.Label) &&
+		slices.Contains(fields, "airtable_record_id="+airtableRecordID)
 }
 
 func invoiceMatchesMarker(inv *qbo.Invoice, fy fiscal.Year, lineHash string) bool {

@@ -41,6 +41,7 @@ type Report struct {
 	Updated            []MemberEntry `json:"updated"`
 	SendCandidates     []MemberEntry `json:"send_candidates"`
 	Sent               []MemberEntry `json:"sent"`
+	Receipts           []MemberEntry `json:"receipts"`
 	VoidCandidates     []MemberEntry `json:"void_candidates"`
 	NoChange           []MemberEntry `json:"no_change"`
 	Skipped            []MemberEntry `json:"skipped"`
@@ -58,6 +59,7 @@ type MemberEntry struct {
 	Detail        string  `json:"detail,omitempty"`
 	Total         float64 `json:"total,omitempty"`
 	InvoiceID     string  `json:"invoice_id,omitempty"`
+	ReceiptID     string  `json:"receipt_id,omitempty"`
 	LineHash      string  `json:"line_hash,omitempty"`
 }
 
@@ -123,8 +125,15 @@ func buildReport(plan *planner.Plan, runID, mode string) Report {
 			entry.Total = mp.CalcResult.Total
 			entry.LineHash = mp.CalcResult.LineHash
 		}
+		// Report what the document really says. Once create has marked credits
+		// spent and moved the member's status, a recalculated total is wrong.
 		if mp.ExistingInvoice != nil {
 			entry.InvoiceID = mp.ExistingInvoice.ID
+			entry.Total = mp.ExistingInvoice.TotalAmt
+		}
+		if mp.ExistingReceipt != nil {
+			entry.ReceiptID = mp.ExistingReceipt.ID
+			entry.Total = mp.ExistingReceipt.TotalAmt
 		}
 
 		switch mp.Action {
@@ -134,6 +143,8 @@ func buildReport(plan *planner.Plan, runID, mode string) Report {
 			r.NoChange = append(r.NoChange, entry)
 		case planner.ActionSend:
 			r.Sent = append(r.Sent, entry)
+		case planner.ActionCreateReceipt, planner.ActionSendReceipt:
+			r.Receipts = append(r.Receipts, entry)
 		case planner.ActionSkip:
 			r.Skipped = append(r.Skipped, entry)
 		case planner.ActionError:

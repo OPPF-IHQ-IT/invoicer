@@ -232,6 +232,9 @@ type InvoiceConfig struct {
 	// SalesTermID is the QBO Term entity ID (e.g. "Due on Receipt") stamped on
 	// every created invoice. Find it via Settings → All lists → Terms in QBO.
 	SalesTermID                  string `yaml:"sales_term_id"`
+	// SalesReceiptDepositAccountID is the QBO account ID for the sales receipts
+	// sent to members who owe $0. Blank uses QBO's default (Undeposited Funds).
+	SalesReceiptDepositAccountID string `yaml:"sales_receipt_deposit_account_id"`
 }
 
 // Load reads and parses the config file, expanding environment variables.

@@ -15,8 +15,8 @@ import (
 type RunCmd struct {
 	FiscalYear       string `short:"f" help:"Fiscal year to run (e.g. FY2026 or 2026)." required:""`
 	AsOf             string `help:"Override today's date for date-sensitive logic (YYYY-MM-DD)."`
-	CreateOnly       bool   `help:"Create invoices in QBO without sending them."`
-	Send             bool   `help:"Send previously-created invoices after manual review."`
+	CreateOnly       bool   `help:"Create invoices, and receipts for $0 members, in QBO without sending them."`
+	Send             bool   `help:"Send previously-created invoices and $0 receipts after manual review."`
 	AllowNameFallback bool  `help:"Allow full-name customer matching during run (use with caution)."`
 	Env              string `help:"QBO environment override." enum:",sandbox,production" default:""`
 }

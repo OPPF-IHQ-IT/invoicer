@@ -9,11 +9,12 @@ func printTable(r Report) {
 	printSection("CREATE", r.Created)
 	printSection("NO CHANGE", r.NoChange)
 	printSection("SEND", r.Sent)
+	printSection("$0 RECEIPTS", r.Receipts)
 	printSection("SKIPPED", r.Skipped)
 	printSection("ERRORS", r.Errors)
 
-	fmt.Printf("\nSummary: %d create  %d no-change  %d send  %d skipped  %d errors\n",
-		len(r.Created), len(r.NoChange), len(r.Sent), len(r.Skipped), len(r.Errors))
+	fmt.Printf("\nSummary: %d create  %d no-change  %d send  %d receipts  %d skipped  %d errors\n",
+		len(r.Created), len(r.NoChange), len(r.Sent), len(r.Receipts), len(r.Skipped), len(r.Errors))
 }
 
 func printSection(label string, entries []MemberEntry) {
