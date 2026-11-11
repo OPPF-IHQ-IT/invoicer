@@ -50,6 +50,28 @@ type SalesItemLineDetail struct {
 	ItemRef  ItemRef
 	Qty      float64
 	UnitPrice float64
+	// ClassID is the QBO Class entity ID for this line. QBO products can't
+	// carry a default class, so it must be set per line; blank leaves the
+	// line unclassified ("Not specified" on class reports).
+	ClassID string
+}
+
+// WithClass returns a copy of lines with classID set on every line that has
+// no class yet. A blank classID returns lines unchanged.
+func WithClass(lines []InvoiceLine, classID string) []InvoiceLine {
+	if classID == "" {
+		return lines
+	}
+	out := make([]InvoiceLine, len(lines))
+	for i, l := range lines {
+		if l.SalesItemLineDetail != nil && l.SalesItemLineDetail.ClassID == "" {
+			d := *l.SalesItemLineDetail
+			d.ClassID = classID
+			l.SalesItemLineDetail = &d
+		}
+		out[i] = l
+	}
+	return out
 }
 
 type ItemRef struct {

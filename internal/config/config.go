@@ -30,6 +30,9 @@ type CampaignConfig struct {
 	// "unknown_designation" so a mislabeled export never files silently to the
 	// wrong item.
 	Designations map[string]string `yaml:"designations"`
+	// ClassID is the QBO Class entity ID stamped on every campaign invoice
+	// line (e.g. "Facilities"). Blank leaves lines unclassified.
+	ClassID string `yaml:"class_id"`
 }
 
 // ItemForDesignation returns the configured QBO Item ID for a designation label.
@@ -235,6 +238,11 @@ type InvoiceConfig struct {
 	// SalesReceiptDepositAccountID is the QBO account ID for the sales receipts
 	// sent to members who owe $0. Blank uses QBO's default (Undeposited Funds).
 	SalesReceiptDepositAccountID string `yaml:"sales_receipt_deposit_account_id"`
+	// ClassID is the QBO Class entity ID stamped on every line of the dues
+	// invoices and sales receipts the invoicer creates (e.g. "Membership &
+	// Dues"). QBO products can't carry a default class. Blank leaves lines
+	// unclassified.
+	ClassID string `yaml:"class_id"`
 }
 
 // Load reads and parses the config file, expanding environment variables.

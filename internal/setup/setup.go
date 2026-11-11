@@ -140,6 +140,9 @@ invoice:
   # in QBO under Settings → All lists → Terms; the ID is in the URL when
   # editing the term. Leave blank to omit the Terms reference.
   sales_term_id: ""
+  # QBO Class ID stamped on every invoice/sales receipt line (e.g. "Membership
+  # & Dues"). QBO products can't carry a default class. Blank = unclassified.
+  class_id: ""
 `
 
 type configValues struct {

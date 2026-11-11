@@ -51,7 +51,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 				CustomerMemo:     cfg.Invoice.CustomerMemo,
 				BillEmail:        mp.QBOCustomer.Email,
 				DepositAccountID: cfg.Invoice.SalesReceiptDepositAccountID,
-				Line:             mp.CalcResult.Lines,
+				Line:             qbo.WithClass(mp.CalcResult.Lines, cfg.Invoice.ClassID),
 			})
 			if err != nil {
 				mp.Action = planner.ActionError
@@ -70,7 +70,7 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 				CustomerMemo: cfg.Invoice.CustomerMemo,
 				BillEmail:    mp.QBOCustomer.Email,
 				SalesTermID:  cfg.Invoice.SalesTermID,
-				Line:         mp.CalcResult.Lines,
+				Line:         qbo.WithClass(mp.CalcResult.Lines, cfg.Invoice.ClassID),
 			})
 			if err != nil {
 				mp.Action = planner.ActionError

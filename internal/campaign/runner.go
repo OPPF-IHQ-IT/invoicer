@@ -147,6 +147,7 @@ func Execute(ctx context.Context, cfg *config.Config, matched []MatchedRow, opts
 						ItemRef:   qbo.ItemRef{Value: itemID},
 						Qty:       1,
 						UnitPrice: m.Amount,
+						ClassID:   cfg.Campaign.ClassID,
 					},
 				},
 			},

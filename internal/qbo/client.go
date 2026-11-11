@@ -483,13 +483,17 @@ func buildInvoicePayload(req InvoiceCreateRequest) map[string]any {
 			"DetailType": "SalesItemLineDetail",
 		}
 		if l.SalesItemLineDetail != nil {
-			line["SalesItemLineDetail"] = map[string]any{
+			detail := map[string]any{
 				"ItemRef": map[string]any{
 					"value": l.SalesItemLineDetail.ItemRef.Value,
 				},
 				"Qty":       l.SalesItemLineDetail.Qty,
 				"UnitPrice": l.SalesItemLineDetail.UnitPrice,
 			}
+			if l.SalesItemLineDetail.ClassID != "" {
+				detail["ClassRef"] = map[string]any{"value": l.SalesItemLineDetail.ClassID}
+			}
+			line["SalesItemLineDetail"] = detail
 		}
 		if l.Description != "" {
 			line["Description"] = l.Description

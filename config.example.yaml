@@ -150,9 +150,15 @@ invoice:
   # QBO account ID for the sales receipts sent to members who owe $0. Leave blank
   # to use QBO's default (Undeposited Funds). No money moves either way.
   sales_receipt_deposit_account_id: ""
+  # QBO Class ID stamped on every line of the dues invoices and sales receipts
+  # the invoicer creates (e.g. "Membership & Dues"). QBO products can't carry a
+  # default class, so without this the lines report as "Not specified".
+  class_id: ""
 
 # Ad-hoc campaign invoice runs (`invoicer campaign <csv>`).
 campaign:
+  # QBO Class ID stamped on every campaign invoice line (e.g. "Facilities").
+  class_id: ""
   # designations maps a Google Form "Designation" answer to the QBO Item ID its
   # contribution should be invoiced against. This lets a single campaign fund
   # multiple line items — e.g. a Special Facilities Utility Drive that covers
