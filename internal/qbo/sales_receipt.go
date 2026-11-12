@@ -20,6 +20,9 @@ type SalesReceipt struct {
 	TotalAmt    float64
 	EmailStatus string // NotSet, NeedToSend, EmailSent
 	PrivateNote string
+	BillEmail   string
+	DeliveryError string
+	Line        []InvoiceLine
 }
 
 // SalesReceiptCreateRequest holds the fields for a new sales receipt.
@@ -119,6 +122,9 @@ func parseSalesReceipt(raw map[string]any) SalesReceipt {
 		TotalAmt:    floatVal(raw, "TotalAmt"),
 		EmailStatus: stringVal(raw, "EmailStatus"),
 		PrivateNote: stringVal(raw, "PrivateNote"),
+		BillEmail:   addressVal(raw, "BillEmail"),
+		DeliveryError: deliveryError(raw),
+		Line:        parseLines(raw),
 	}
 	if cr, ok := raw["CustomerRef"].(map[string]any); ok {
 		sr.CustomerRef = CustomerRef{Value: stringVal(cr, "value"), Name: stringVal(cr, "name")}

@@ -16,6 +16,7 @@ type Customer struct {
 	Email         string
 	Notes         string // maps to QBO Notes field; used to store Control #
 	Active        bool
+	Balance       float64
 }
 
 type Invoice struct {
@@ -32,6 +33,10 @@ type Invoice struct {
 	Line        []InvoiceLine
 	Status      string // Draft, Pending, Voided, Deleted, Synchronized
 	SyncToken   string
+	BillEmail   string
+	// DeliveryError is QBO's delivery failure, e.g. "Undeliverable". A bounced
+	// invoice still has EmailStatus EmailSent, so check this as well.
+	DeliveryError string
 }
 
 type CustomerRef struct {

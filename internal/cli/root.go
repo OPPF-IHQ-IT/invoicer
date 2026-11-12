@@ -9,6 +9,8 @@ var Root struct {
 	Auth      AuthCmd      `cmd:"" help:"Authenticate with QuickBooks Online."`
 	Preview   PreviewCmd   `cmd:"" help:"Preview what invoicer would create, send, or skip."`
 	Run       RunCmd       `cmd:"" help:"Execute invoice creation or sending."`
+	Preflight PreflightCmd `cmd:"" help:"Check everything before a dues run and write the review file. Changes nothing."`
+	DuesRun   DuesRunCmd   `cmd:"" name:"dues-run" help:"Guided annual dues run (recommended). Walks through checks, review, create, and send."`
 	Campaign  CampaignCmd  `cmd:"" help:"Run an ad-hoc campaign invoice batch from a Google Form CSV."`
 	Customers CustomersCmd `cmd:"" help:"Customer reconciliation commands."`
 	Config    ConfigCmd    `cmd:"" help:"Config management commands."`

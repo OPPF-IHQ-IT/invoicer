@@ -42,6 +42,52 @@ go install github.com/OPPF-IHQ-IT/invoicer/cmd/invoicer@latest
 
 ---
 
+## Running dues each fiscal year
+
+**`invoicer dues-run` is the recommended way to run dues.** It walks through the whole year's run in plain English and stops for a typed approval before anything is created or emailed.
+
+```bash
+# The week before: check everything and build the review file. Changes nothing.
+invoicer preflight -f FY2028
+
+# Practice: the full flow with real data and real prompts. Changes nothing.
+invoicer dues-run -f FY2028 --dry-run
+
+# The real run. Stop at any point, and rerun to pick up where you left off.
+invoicer dues-run -f FY2028
+
+# Afterward: where things stand, including bounces. Run it for a day or two.
+invoicer dues-run status -f FY2028
+```
+
+| Stage | What happens | Writes anything? |
+|---|---|---|
+| 1. Pre-flight | Checks setup, dues rates, members, year-over-year changes, and QBO balances. Blockers stop the run | No |
+| 2. Review | Writes a spreadsheet with flagged members first. You type `reviewed <warnings>` after working through it | No |
+| 3. Create | You type `create <invoices> + <receipts>`. Creates invoices and $0 receipts | QBO and Airtable; emails no one |
+| 4. Verify create | Reads every document back from QBO and compares it with what you reviewed | No |
+| 5. Send | You type `send <invoices> + <receipts>`. Emails everything | Emails members |
+| 6. Verify send | Confirms every document shows as sent | No |
+
+What keeps it safe:
+
+- **Typed approvals use the real counts.** Anything else stops the run.
+- **You approve exactly what you reviewed.** If Airtable or QBO changes before create, the run stops and shows what changed.
+- **Every total is recomputed separately** from the billing code, and any difference blocks the run.
+- **Stopping is always safe.** The run works out where it left off from QBO and Airtable.
+
+Invoices are dated the first day of the fiscal year. Pass `--as-of YYYY-MM-DD` for another date; on or after January 1, that includes late fees.
+
+To practice before statuses are reset for the new year, add `--all-members` to a dry run. It includes `Invoiced` and `Active` members, and it only works with `--dry-run`. Expect extra "already owes" warnings from any unpaid invoices.
+
+Recent MSP offsets end on their own: **MSP Prepaid Through** on Members holds the last covered fiscal year, inclusive, so `FY2027` means dues start in FY2028.
+
+Review files contain member data. They're written to `report_dir` (`./.invoicer-runs` by default), which is git-ignored.
+
+For setup and the checks only a person can do, see [docs/annual-dues-run.md](docs/annual-dues-run.md). `invoicer preview` and `invoicer run` still work for one-off needs, but they skip the checks and approvals.
+
+---
+
 ## Getting started
 
 ### 1. Run the setup wizard
@@ -190,7 +236,33 @@ invoicer preview --fiscal-year FY2026 --env sandbox
 
 ---
 
+### `invoicer preflight`
+
+Run every check and write the review file. Changes nothing.
+
+```bash
+invoicer preflight -f FY2028
+invoicer preflight -f FY2028 --as-of 2027-11-01
+```
+
+---
+
+### `invoicer dues-run`
+
+The guided annual run, and the recommended way to run dues. See [Running dues each fiscal year](#running-dues-each-fiscal-year).
+
+```bash
+invoicer dues-run -f FY2028 --dry-run                 # practice; changes nothing
+invoicer dues-run -f FY2028 --dry-run --all-members   # practice before statuses are reset
+invoicer dues-run -f FY2028                           # the real run
+invoicer dues-run status -f FY2028                    # invoices, payments, and bounces
+```
+
+---
+
 ### `invoicer run`
+
+Prefer `invoicer dues-run` for the annual run. This command skips the checks and approvals.
 
 Execute invoice creation or sending. Exactly one of `--create-only` or `--send` is required.
 

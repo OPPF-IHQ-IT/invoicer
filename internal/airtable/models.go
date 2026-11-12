@@ -26,6 +26,12 @@ type Member struct {
 	// Reclaimable is true when Status == the configured reclaimable status value.
 	// These members are invoiceable but also owe an International Reinstatement fee.
 	Reclaimable bool
+	// MSPPrepaidThrough is the last fiscal year the MSP prepayment covers, e.g.
+	// "FY2026". Optional; blank when the field isn't configured or filled in.
+	MSPPrepaidThrough string
+	// MSPExpired is set by the planner when MSPPrepaidThrough has passed. The
+	// member is then billed as not Recent MSP, even if the box is still checked.
+	MSPExpired bool
 
 	AddressLine1 string
 	AddressLine2 string

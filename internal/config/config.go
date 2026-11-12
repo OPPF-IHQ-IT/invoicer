@@ -182,6 +182,9 @@ type MembersFieldsConfig struct {
 	InitiationChapter string `yaml:"initiation_chapter"`
 	AtLarge          string `yaml:"at_large"`
 	UndergradRate    string `yaml:"undergrad_rate"`
+	// MSPPrepaidThrough is an optional field holding the last prepaid fiscal
+	// year, e.g. "FY2026". Pre-flight uses it to flag ended MSP periods.
+	MSPPrepaidThrough string `yaml:"msp_prepaid_through"`
 	AddressLine1     string `yaml:"address_line_1"`
 	AddressLine2     string `yaml:"address_line_2"`
 	City             string `yaml:"city"`

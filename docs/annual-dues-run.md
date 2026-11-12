@@ -1,6 +1,8 @@
 # Annual dues run
 
 The runbook for billing a fiscal year's dues. The fiscal year starts **November 1**.
+
+**Use `./invoicer dues-run -f FY2027` for the run.** It covers the run-day steps below, with typed approvals and verification, and `./invoicer preflight -f FY2027` covers most of the week-before checks. Practice first with `--dry-run`. This runbook explains what those commands do, and it's the fallback if you need `preview` and `run` directly.
 Invoices are dated November 1 and due on receipt. Late fees apply from **January 1**.
 
 Examples use FY2027 (November 1, 2026 to October 31, 2027). Change `-f` and `--as-of` for other years.
@@ -31,7 +33,8 @@ The technology chair can do this part for the KRS. Run everything from the repo 
    ```
    Always pass `--env production`. Without it, login goes to sandbox, whatever the config says.
 2. **Dues Schedule.** Airtable needs a row per level for the fiscal year (e.g. `2026-2027`) or an `All` row.
-   Fiscal-year rows win over `All` rows.
+   Fiscal-year rows win over `All` rows. When rates change for good, update the `All` row too, or the next
+   year falls back to the old rate. Pre-flight shows any rate that differs from last year.
 3. **Member statuses.** Only `Invoicable` and `Reclaimable` members are billed. Move every brother who
    should get an invoice to one of those statuses. Life members are included too; they get a $0 sales receipt.
 4. **Customers.** Every billed member needs a linked QBO customer with an email.
@@ -47,10 +50,13 @@ The technology chair can do this part for the KRS. Run everything from the repo 
    ./invoicer preview -f FY2027 --as-of 2026-11-01
    ```
    Check the totals and the skipped list. `missing_email` and customer skips mean that member won't be invoiced.
-7. **Check what the math can't.** Totals only reflect Airtable, so also confirm:
-   - **Recent MSP.** The offset is prepaid for three years, and nothing tracks when that ends. Airtable has no
-     initiation date, so check each `Recent MSP?` box against the initiation records. A Fall 2023 brother's last
-     prepaid year was FY2026. Chapter initiates go from $0 to full dues when it ends, so warn them.
+7. **Check what the math can't.** Pre-flight flags most of these, but a person has to decide. Confirm:
+   - **Recent MSP.** The offset is prepaid for three years. Check each `Recent MSP?` box against the initiation
+     records. A Fall 2023 brother's last prepaid year was FY2026. Chapter initiates go from $0 to full dues when
+     it ends, so warn them. **MSP Prepaid Through** on Members holds the last covered fiscal year, inclusive:
+     `FY2027` means FY2027 is prepaid and dues start in FY2028. Set it when a brother joins. Once that year has passed,
+     the offset stops automatically, pre-flight lists who rolled off, and a real create unchecks `Recent MSP?`. If the field
+     is blank, the checkbox decides.
    - **Emails.** Invoices go to the QBO customer's email, not Airtable's. Fix differences in QBO before create.
      Mailchimp shows which address a brother actually uses.
    - **New names.** Anyone with no dues history in QBO is getting their first invoice from us. Confirm they
@@ -82,7 +88,7 @@ The technology chair can do this part for the KRS. Run everything from the repo 
    ```
    Send finds each member's invoice or $0 receipt by the Airtable record ID in its private note. It skips
    anything already emailed or paid. The Sales form copies (KF, KRS) go out with receipts too.
-7. **Check for bounces.** Look in QBO later that day and the next. A bounced invoice still shows as sent, so a
+7. **Check for bounces.** Run `./invoicer dues-run status -f FY2027` later that day and the next. A bounced invoice still shows as sent, so a
    rerun skips it. Get a good address, fix it on the customer and the invoice, and resend from QBO.
 
 ## Skip reasons

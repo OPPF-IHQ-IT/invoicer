@@ -447,6 +447,7 @@ func parseCustomer(raw map[string]any) Customer {
 	if email, ok := raw["PrimaryEmailAddr"].(map[string]any); ok {
 		c.Email = stringVal(email, "Address")
 	}
+	c.Balance = floatVal(raw, "Balance")
 	return c
 }
 
@@ -459,6 +460,9 @@ func parseInvoice(raw map[string]any) Invoice {
 		EmailStatus: stringVal(raw, "EmailStatus"),
 		PrivateNote: stringVal(raw, "PrivateNote"),
 		SyncToken:   stringVal(raw, "SyncToken"),
+		BillEmail:   addressVal(raw, "BillEmail"),
+		DeliveryError: deliveryError(raw),
+		Line:        parseLines(raw),
 	}
 	if cr, ok := raw["CustomerRef"].(map[string]any); ok {
 		inv.CustomerRef = CustomerRef{

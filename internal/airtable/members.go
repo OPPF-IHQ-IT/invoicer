@@ -113,6 +113,7 @@ func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
 		AtLarge:          boolField(r, f.AtLarge),
 		UndergradRate:    boolField(r, f.UndergradRate),
 		Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
+		MSPPrepaidThrough: stringField(r, f.MSPPrepaidThrough),
 		AddressLine1:     stringField(r, f.AddressLine1),
 		AddressLine2:     stringField(r, f.AddressLine2),
 		City:             stringField(r, f.City),

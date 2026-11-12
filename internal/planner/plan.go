@@ -101,11 +101,24 @@ func Build(ctx context.Context, cfg *config.Config, fy fiscal.Year, asOf time.Ti
 	}
 
 	for _, member := range members {
+		member = applyMSPExpiry(member, fy)
 		mp := buildMemberPlan(ctx, cfg, atClient, qboClient, fy, asOf, member, scheduleRows, memberCredits[member.RecordID], customerIndex, sendMode)
 		plan.MemberPlans = append(plan.MemberPlans, mp)
 	}
 
 	return plan, nil
+}
+
+// applyMSPExpiry ends the Recent MSP offset once the prepaid period is over.
+// MSP Prepaid Through is inclusive: FY2027 means dues start in FY2028. A blank
+// or unreadable value leaves the Recent MSP box in charge.
+func applyMSPExpiry(m airtable.Member, fy fiscal.Year) airtable.Member {
+	through, err := fiscal.Parse(strings.ToUpper(strings.TrimSpace(m.MSPPrepaidThrough)))
+	if m.RecentMSP && err == nil && through.Number < fy.Number {
+		m.RecentMSP = false
+		m.MSPExpired = true
+	}
+	return m
 }
 
 func buildMemberPlan(

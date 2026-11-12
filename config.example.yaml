@@ -105,6 +105,7 @@ airtable:
       initiation_chapter: "Initiation Chapter" # text or single-select; compared to home_chapter below
       at_large: "At Large?"             # checked = pays Intl/District/State elsewhere; invoiced for local dues only
       undergrad_rate: "Undergraduate Rate?" # checked = billed the "International (Undergraduate)" dues schedule level
+      msp_prepaid_through: "MSP Prepaid Through" # optional; last prepaid fiscal year, e.g. FY2026. Pre-flight flags ended MSP periods
       address_line_1: "Address Line 1"
       address_line_2: "Address Line 2"
       city: "City"

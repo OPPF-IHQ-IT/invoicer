@@ -93,6 +93,13 @@ func CreateInvoices(ctx context.Context, cfg *config.Config, plan *planner.Plan)
 			mp.SkipDetail = fmt.Sprintf("document created (%s) but Airtable status update failed: %v", docID, err)
 		}
 
+		// The prepaid period is over, so keep the Recent MSP box accurate.
+		if mp.Member.MSPExpired {
+			if err := atClient.UpdateMemberFields(ctx, &cfg.Airtable, mp.Member.RecordID, map[string]any{cfg.Airtable.Fields.Members.RecentMSP: false}); err != nil {
+				mp.SkipDetail += fmt.Sprintf("; unchecking Recent MSP failed (uncheck it by hand): %v", err)
+			}
+		}
+
 		// Consume poll worker credits if any were applied.
 		if err := consumePollWorkerCredits(ctx, atClient, cfg, mp); err != nil {
 			mp.SkipDetail += fmt.Sprintf("; poll worker credit update failed: %v", err)
