@@ -250,3 +250,26 @@ func TestBuildStatus(t *testing.T) {
 }
 
 var _ = planner.ActionSend
+
+func TestMSPAreaFinding(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Airtable.HomeDistrict, cfg.Airtable.HomeState = "07", "FL"
+	for _, tc := range []struct {
+		name string
+		m    airtable.Member
+		want string
+	}{
+		{"filled in", airtable.Member{RecentMSP: true, InitiationDistrict: "03", InitiationState: "VA"}, ""},
+		{"blank state", airtable.Member{RecentMSP: true, InitiationDistrict: "07"}, "msp_initiation_unknown"},
+		{"home initiate blank", airtable.Member{RecentMSP: true, ChapterInitiate: true}, ""},
+		{"not MSP", airtable.Member{}, ""},
+		{"MSP ended", airtable.Member{RecentMSP: true, MSPExpired: true}, ""},
+	} {
+		if got, _ := mspAreaFinding(cfg, tc.m); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got, _ := mspAreaFinding(&config.Config{}, airtable.Member{RecentMSP: true}); got != "" {
+		t.Errorf("no home district/state configured: got %q, want none", got)
+	}
+}

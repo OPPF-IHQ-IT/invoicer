@@ -142,6 +142,11 @@ type AirtableConfig struct {
 	// Initiation Chapter. Recent MSPs initiated here get their local dues
 	// offset; those initiated elsewhere owe local dues.
 	HomeChapter string `yaml:"home_chapter"`
+	// HomeDistrict and HomeState gate the Recent MSP District and State
+	// offsets: they apply only to brothers whose Initiation District/State
+	// match. Blank means the offset applies to every Recent MSP.
+	HomeDistrict string `yaml:"home_district"`
+	HomeState    string `yaml:"home_state"`
 }
 
 type AirtableTablesConfig struct {
@@ -180,6 +185,8 @@ type MembersFieldsConfig struct {
 	Retired          string `yaml:"retired"`
 	RecentMSP        string `yaml:"recent_msp"`
 	InitiationChapter string `yaml:"initiation_chapter"`
+	InitiationDistrict string `yaml:"initiation_district"`
+	InitiationState    string `yaml:"initiation_state"`
 	AtLarge          string `yaml:"at_large"`
 	UndergradRate    string `yaml:"undergrad_rate"`
 	// MSPPrepaidThrough is an optional field holding the last prepaid fiscal
@@ -327,6 +334,12 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Airtable.Fields.Members.InitiationChapter == "" {
 		cfg.Airtable.Fields.Members.InitiationChapter = "Initiation Chapter"
+	}
+	if cfg.Airtable.Fields.Members.InitiationDistrict == "" {
+		cfg.Airtable.Fields.Members.InitiationDistrict = "Initiation District"
+	}
+	if cfg.Airtable.Fields.Members.InitiationState == "" {
+		cfg.Airtable.Fields.Members.InitiationState = "Initiation State"
 	}
 	if cfg.Airtable.HomeChapter == "" {
 		cfg.Airtable.HomeChapter = "Chi Tau"

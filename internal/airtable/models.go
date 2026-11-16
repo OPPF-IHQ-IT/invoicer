@@ -16,11 +16,19 @@ type Member struct {
 	LocalLife        bool
 	BasileusEmeritus bool
 	Retired          bool
-	RecentMSP        bool // prepaid for 3 years; Intl/District/State always offset, Local only if ChapterInitiate
+	RecentMSP        bool // prepaid for 3 years; Intl always offset, District/State/Local only for home initiates
 	InitiationChapter string
 	// ChapterInitiate is true when InitiationChapter matches the configured
 	// home chapter. It gates the Recent MSP local dues offset.
 	ChapterInitiate bool
+	InitiationDistrict string
+	InitiationState    string
+	// DistrictInitiate and StateInitiate gate the Recent MSP District and
+	// State offsets. They're true when the member was initiated in the
+	// configured home district/state (home chapter initiates with blank
+	// fields count), or when no home district/state is configured.
+	DistrictInitiate bool
+	StateInitiate    bool
 	AtLarge          bool // pays International/District/State elsewhere; invoiced for local dues only
 	UndergradRate    bool // recent undergraduate alumnus; billed the undergraduate International rate
 	// Reclaimable is true when Status == the configured reclaimable status value.

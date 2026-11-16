@@ -143,6 +143,7 @@ func TestCalculate_QuadrupleLifeMember(t *testing.T) {
 func TestCalculate_RecentMSPMember(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.DistrictInitiate, m.StateInitiate = true, true // initiated in the home district and state
 	m.ChapterInitiate = true
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
@@ -171,6 +172,7 @@ func TestCalculate_RecentMSPMember(t *testing.T) {
 func TestCalculate_RecentMSPRetiredMember(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.DistrictInitiate, m.StateInitiate = true, true // initiated in the home district and state
 	m.ChapterInitiate = true
 	m.Retired = true
 	result := Calculate(CalculationInput{
@@ -442,6 +444,7 @@ func TestCalculate_UndergradRateRecentMSPOffsetsUndergradAmount(t *testing.T) {
 	m := activeMember()
 	m.UndergradRate = true
 	m.RecentMSP = true
+	m.DistrictInitiate, m.StateInitiate = true, true // initiated in the home district and state
 	m.ChapterInitiate = true
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: undergradSchedule, Items: testItems,
@@ -484,6 +487,7 @@ func TestCalculate_UndergradRateMissingItemSkips(t *testing.T) {
 func TestCalculate_RecentMSPInitiatedElsewhereOwesLocal(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.DistrictInitiate, m.StateInitiate = true, true // initiated in the home district and state
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems, PollWorkerCredit: 50,
 	})
@@ -508,6 +512,7 @@ func TestCalculate_RecentMSPInitiatedElsewhereOwesLocal(t *testing.T) {
 func TestCalculate_RecentMSPInitiatedElsewhereRetiredOwesRetireeLocal(t *testing.T) {
 	m := activeMember()
 	m.RecentMSP = true
+	m.DistrictInitiate, m.StateInitiate = true, true // initiated in the home district and state
 	m.Retired = true
 	result := Calculate(CalculationInput{
 		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
@@ -661,5 +666,50 @@ func TestCalculate_MemberCreditMissingItemSkips(t *testing.T) {
 	})
 	if result.SkipReason != SkipReasonQBOItemMappingMissing {
 		t.Errorf("SkipReason: got %q, want %q", result.SkipReason, SkipReasonQBOItemMappingMissing)
+	}
+}
+
+func TestCalculate_RecentMSPInitiatedOutOfDistrictOwesDistrictAndState(t *testing.T) {
+	m := activeMember()
+	m.RecentMSP = true // initiated in another district and state: only International is prepaid here
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if want := 20.00 + 15.00 + 198.00; result.Total != want {
+		t.Errorf("out-of-district MSP total: got %.2f, want %.2f", result.Total, want)
+	}
+	ids := lineItemIDs(result)
+	if _, ok := ids["ITEM_INTL_MSP"]; !ok {
+		t.Error("expected ITEM_INTL_MSP offset, not found")
+	}
+	for _, id := range []string{"ITEM_DIST_MSP", "ITEM_STATE_MSP", "ITEM_LOCAL_MSP"} {
+		if _, ok := ids[id]; ok {
+			t.Errorf("out-of-district MSP should not get %s", id)
+		}
+	}
+}
+
+func TestCalculate_RecentMSPInitiatedInDistrictOtherStateOwesState(t *testing.T) {
+	m := activeMember()
+	m.RecentMSP = true
+	m.DistrictInitiate = true // e.g. a Georgia chapter in the home district
+	result := Calculate(CalculationInput{
+		FY: testFY, AsOf: testAsOf, Member: m, Schedule: testSchedule, Items: testItems,
+	})
+	if result.SkipReason != SkipReasonNone {
+		t.Fatalf("unexpected skip: %s", result.SkipReason)
+	}
+	if want := 15.00 + 198.00; result.Total != want {
+		t.Errorf("in-district, other-state MSP total: got %.2f, want %.2f", result.Total, want)
+	}
+	ids := lineItemIDs(result)
+	if _, ok := ids["ITEM_DIST_MSP"]; !ok {
+		t.Error("expected ITEM_DIST_MSP offset, not found")
+	}
+	if _, ok := ids["ITEM_STATE_MSP"]; ok {
+		t.Error("other-state MSP should not get ITEM_STATE_MSP")
 	}
 }

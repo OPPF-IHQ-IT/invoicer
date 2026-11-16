@@ -57,6 +57,11 @@ The technology chair can do this part for the KRS. Run everything from the repo 
      `FY2027` means FY2027 is prepaid and dues start in FY2028. Set it when a brother joins. Once that year has passed,
      the offset stops automatically, pre-flight lists who rolled off, and a real create unchecks `Recent MSP?`. If the field
      is blank, the checkbox decides.
+   - **Where MSPs were initiated.** The MSP always covers International. It covers District and State dues only
+     for brothers initiated in the home district and state (`home_district` / `home_state` in the config), going by
+     **Initiation District** and **Initiation State** on Members. Fill both in from IHQ when a brother joins.
+     Pre-flight flags a Recent MSP from another chapter with either one blank; until it's filled in, he's billed
+     those dues.
    - **Emails.** Invoices go to the QBO customer's email, not Airtable's. Fix differences in QBO before create.
      Mailchimp shows which address a brother actually uses.
    - **New names.** Anyone with no dues history in QBO is getting their first invoice from us. Confirm they

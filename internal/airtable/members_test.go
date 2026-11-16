@@ -24,6 +24,31 @@ func TestIsHomeChapter(t *testing.T) {
 	}
 }
 
+func TestIsHomeArea(t *testing.T) {
+	cases := []struct {
+		value, home     string
+		chapterInitiate bool
+		norm            func(string) string
+		want            bool
+	}{
+		{"07", "07", false, normDistrict, true},
+		{"7", "07", false, normDistrict, true},
+		{"7th", "07", false, normDistrict, true},
+		{"03", "07", false, normDistrict, false},
+		{"", "07", false, normDistrict, false}, // unknown and not a home initiate: owes
+		{"", "07", true, normDistrict, true},   // home chapter initiate: home district by definition
+		{"03", "", false, normDistrict, true},  // no home district configured: offset for all
+		{"fl", "FL", false, normText, true},
+		{"GA", "FL", false, normText, false},
+		{"", "FL", true, normText, true},
+	}
+	for _, c := range cases {
+		if got := isHomeArea(c.value, c.home, c.chapterInitiate, c.norm); got != c.want {
+			t.Errorf("isHomeArea(%q, %q, %v) = %v, want %v", c.value, c.home, c.chapterInitiate, got, c.want)
+		}
+	}
+}
+
 func TestBoolField(t *testing.T) {
 	r := record{Fields: map[string]any{
 		"checkbox":     true,

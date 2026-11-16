@@ -87,6 +87,8 @@ airtable:
     no_longer_member: "No Longer in Chi Tau"
 
   home_chapter: "Chi Tau"
+  home_district: ""  # e.g. "07"; Recent MSPs initiated elsewhere owe District dues
+  home_state: ""     # e.g. "FL"; Recent MSPs initiated elsewhere owe State dues
 
   fields:
     members:
@@ -102,6 +104,8 @@ airtable:
       retired: "Retired?"
       recent_msp: "Recent MSP?"
       initiation_chapter: "Initiation Chapter"
+      initiation_district: "Initiation District"
+      initiation_state: "Initiation State"
       at_large: "At Large?"
       undergrad_rate: "Undergraduate Rate?"
 

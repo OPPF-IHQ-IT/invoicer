@@ -80,7 +80,7 @@ Invoices are dated the first day of the fiscal year. Pass `--as-of YYYY-MM-DD` f
 
 To practice before statuses are reset for the new year, add `--all-members` to a dry run. It includes `Invoiced` and `Active` members, and it only works with `--dry-run`. Expect extra "already owes" warnings from any unpaid invoices.
 
-Recent MSP offsets end on their own: **MSP Prepaid Through** on Members holds the last covered fiscal year, inclusive, so `FY2027` means dues start in FY2028.
+Recent MSP offsets end on their own: **MSP Prepaid Through** on Members holds the last covered fiscal year, inclusive, so `FY2027` means dues start in FY2028. The MSP covers District and State dues only for brothers whose **Initiation District** / **Initiation State** match `home_district` / `home_state` in the config.
 
 Review files contain member data. They're written to `report_dir` (`./.invoicer-runs` by default), which is git-ignored.
 

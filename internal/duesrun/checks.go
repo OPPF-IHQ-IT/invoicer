@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OPPF-IHQ-IT/invoicer/internal/airtable"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/config"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/planner"
 	"github.com/OPPF-IHQ-IT/invoicer/internal/qbo"
@@ -179,6 +180,9 @@ func checkMembers(cfg *config.Config, s *Snapshot) []Finding {
 		} else if code, msg := mspFinding(m.RecentMSP, m.MSPPrepaidThrough, s.FY.Number); code != "" {
 			add(Warning, code, msg)
 		}
+		if code, msg := mspAreaFinding(cfg, m); code != "" {
+			add(Warning, code, msg)
+		}
 		if mp.CalcResult != nil && mp.CalcResult.Total > 0 && pollByMember[m.RecordID] > 0 && !hasPollLine(cfg, mp) {
 			add(Warning, "poll_credit_unused", fmt.Sprintf("Has $%.2f in poll worker credit that can't apply, because local dues are already $0", pollByMember[m.RecordID]))
 		}
@@ -212,6 +216,26 @@ func mspFinding(recent bool, through string, fyNumber int) (string, string) {
 		return "msp_unchecked", fmt.Sprintf("Prepaid through %s, but Recent MSP isn't checked", through)
 	}
 	return "", ""
+}
+
+// mspAreaFinding flags a Recent MSP from another chapter whose initiation
+// district or state is blank. The invoicer can't tell whether the MSP covers
+// his District and State dues, so it bills them.
+func mspAreaFinding(cfg *config.Config, m airtable.Member) (string, string) {
+	if !m.RecentMSP || m.MSPExpired || m.ChapterInitiate {
+		return "", ""
+	}
+	var missing []string
+	if strings.TrimSpace(cfg.Airtable.HomeDistrict) != "" && strings.TrimSpace(m.InitiationDistrict) == "" {
+		missing = append(missing, "Initiation District")
+	}
+	if strings.TrimSpace(cfg.Airtable.HomeState) != "" && strings.TrimSpace(m.InitiationState) == "" {
+		missing = append(missing, "Initiation State")
+	}
+	if len(missing) == 0 {
+		return "", ""
+	}
+	return "msp_initiation_unknown", fmt.Sprintf("Recent MSP initiated at %q, but %s is blank, so the matching dues are billed. Fill it in from IHQ", m.InitiationChapter, strings.Join(missing, " and "))
 }
 
 func parseFY(s string) int {

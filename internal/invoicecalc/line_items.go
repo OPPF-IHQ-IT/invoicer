@@ -191,7 +191,8 @@ func buildUpperLevelLines(input CalculationInput, schedule scheduleMap, items co
 		}
 	}
 
-	// District
+	// District. The Recent MSP prepayment covers District and State dues only
+	// for brothers initiated in the home district and state; others owe them.
 	dist, ok := schedule.resolve("District")
 	if !ok {
 		return nil, SkipReasonDuesScheduleMissing
@@ -203,7 +204,7 @@ func buildUpperLevelLines(input CalculationInput, schedule scheduleMap, items co
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.DistrictLifeMember, Description: "District Life Membership", Amount: -dist.Amount})
-	case input.Member.RecentMSP:
+	case input.Member.RecentMSP && input.Member.DistrictInitiate:
 		if items.DistrictMSP == "" {
 			return nil, SkipReasonQBOItemMappingMissing
 		}
@@ -227,7 +228,7 @@ func buildUpperLevelLines(input CalculationInput, schedule scheduleMap, items co
 			return nil, SkipReasonQBOItemMappingMissing
 		}
 		lines = append(lines, lineItem{ItemID: items.StateLifeMember, Description: "State Life Membership", Amount: -state.Amount})
-	case input.Member.RecentMSP:
+	case input.Member.RecentMSP && input.Member.StateInitiate:
 		if items.StateMSP == "" {
 			return nil, SkipReasonQBOItemMappingMissing
 		}

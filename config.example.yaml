@@ -88,6 +88,13 @@ airtable:
   # initiated elsewhere still owe local dues.
   home_chapter: "Chi Tau"
 
+  # Recent MSPs get the District and State offsets only when their Initiation
+  # District / Initiation State match these. A brother initiated in another
+  # district or state owes those dues here. Leave blank to offset them for every
+  # Recent MSP. Home chapter initiates with blank fields count as home.
+  home_district: "07"
+  home_state: "FL"
+
   fields:
     members:
       control_number: "Control #"
@@ -103,6 +110,8 @@ airtable:
       retired: "Retired?"
       recent_msp: "Recent MSP?"
       initiation_chapter: "Initiation Chapter" # text or single-select; compared to home_chapter below
+      initiation_district: "Initiation District" # e.g. 07; compared to home_district
+      initiation_state: "Initiation State"       # e.g. FL; compared to home_state
       at_large: "At Large?"             # checked = pays Intl/District/State elsewhere; invoiced for local dues only
       undergrad_rate: "Undergraduate Rate?" # checked = billed the "International (Undergraduate)" dues schedule level
       msp_prepaid_through: "MSP Prepaid Through" # optional; last prepaid fiscal year, e.g. FY2026. Pre-flight flags ended MSP periods

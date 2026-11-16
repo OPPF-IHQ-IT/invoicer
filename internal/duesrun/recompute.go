@@ -38,10 +38,10 @@ func recomputeTotal(m airtable.Member, r rates, late bool, poll float64, credits
 		if !m.IntlLife && !m.RecentMSP {
 			upper += intl
 		}
-		if !m.DistrictLife && !m.RecentMSP {
+		if !m.DistrictLife && !(m.RecentMSP && m.DistrictInitiate) {
 			upper += r["District"]
 		}
-		if !m.StateLife && !m.RecentMSP {
+		if !m.StateLife && !(m.RecentMSP && m.StateInitiate) {
 			upper += r["State"]
 		}
 		if m.Reclaimable {

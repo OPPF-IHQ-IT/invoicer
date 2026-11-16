@@ -93,6 +93,13 @@ func (c *Client) ListAllMembers(ctx context.Context, cfg *config.AirtableConfig)
 }
 
 func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
+	m := memberFields(r, cfg)
+	m.DistrictInitiate = isHomeArea(m.InitiationDistrict, cfg.HomeDistrict, m.ChapterInitiate, normDistrict)
+	m.StateInitiate = isHomeArea(m.InitiationState, cfg.HomeState, m.ChapterInitiate, normText)
+	return m
+}
+
+func memberFields(r record, cfg *config.AirtableConfig) Member {
 	f := cfg.Fields.Members
 	return Member{
 		RecordID:         r.ID,
@@ -110,6 +117,8 @@ func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
 		RecentMSP:        boolField(r, f.RecentMSP),
 		InitiationChapter: stringField(r, f.InitiationChapter),
 		ChapterInitiate:   isHomeChapter(stringField(r, f.InitiationChapter), cfg.HomeChapter),
+		InitiationDistrict: stringField(r, f.InitiationDistrict),
+		InitiationState:    stringField(r, f.InitiationState),
 		AtLarge:          boolField(r, f.AtLarge),
 		UndergradRate:    boolField(r, f.UndergradRate),
 		Reclaimable:      stringField(r, f.Status) == cfg.StatusValues.Reclaimable,
@@ -126,7 +135,31 @@ func memberFromRecord(r record, cfg *config.AirtableConfig) Member {
 // chapter. Matching ignores case and surrounding/internal whitespace so
 // "chi tau" and "Chi  Tau" still count; a blank value never matches.
 func isHomeChapter(initiationChapter, homeChapter string) bool {
-	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
-	got := norm(initiationChapter)
-	return got != "" && got == norm(homeChapter)
+	got := normText(initiationChapter)
+	return got != "" && got == normText(homeChapter)
+}
+
+// isHomeArea reports whether a member's initiation district or state is the
+// configured home one. No home configured means every member counts. A blank
+// value counts only for home chapter initiates, whose district and state are
+// the home ones by definition.
+func isHomeArea(value, home string, chapterInitiate bool, norm func(string) string) bool {
+	if norm(home) == "" {
+		return true
+	}
+	if norm(value) == "" {
+		return chapterInitiate
+	}
+	return norm(value) == norm(home)
+}
+
+func normText(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
+
+// normDistrict treats "07", "7" and "7th" alike.
+func normDistrict(s string) string {
+	s = strings.TrimSuffix(normText(s), "th")
+	if t := strings.TrimLeft(s, "0"); t != "" {
+		return t
+	}
+	return s
 }
